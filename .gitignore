@@ -1,0 +1,10 @@
+.DS_Store
+.next
+node_modules
+.venv
+venv
+__pycache__
+*.pyc
+data/*.db
+data/*.db-shm
+data/*.db-wal

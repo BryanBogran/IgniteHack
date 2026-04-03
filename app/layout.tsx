@@ -5,8 +5,8 @@ import { createServerClientSafe } from "@/lib/supabase/server";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hackathon Starter",
-  description: "Demo-ready Next.js + Supabase starter for case competitions and hackathons.",
+  title: "Project Anchor",
+  description: "Ambient memory support for TBI survivors with privacy-first local object tracking.",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

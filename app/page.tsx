@@ -1,39 +1,43 @@
 import Link from "next/link";
-import { ArrowRight, BarChart3, Lightbulb, NotebookPen, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Brain, Camera, MapPinned, ShieldCheck, Sparkles } from "lucide-react";
 import { AnimatedGroup } from "@/components/ui/animated-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { SectionHeader } from "@/components/ui/section-header";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
 
 const features = [
   {
-    title: "Investor-ready polish",
-    description: "Clean landing page, refined dashboard, and transitions that feel intentional in a live demo.",
+    title: "Built for memory loss, not perfect habits",
+    description: "Anchor removes manual logging and tagging so the workflow still works when short-term memory encoding does not.",
     icon: Sparkles,
   },
   {
-    title: "Fast team collaboration",
-    description: "Simple project and note primitives let teams organize research, messaging, and pitch material quickly.",
-    icon: NotebookPen,
+    title: "Local-first room intelligence",
+    description: "A single corner webcam watches trusted drop zones, extracts object metadata, and discards frames immediately.",
+    icon: Camera,
   },
   {
-    title: "Supabase-native backend",
-    description: "SSR-compatible auth, Postgres schema, and row-level security keep the stack small and practical.",
+    title: "Last-known-location memory",
+    description: "When an item disappears into a drawer or under clutter, Anchor still returns the final visible location and time.",
     icon: ShieldCheck,
   },
 ];
 
 const demoBlocks = [
-  "Executive Summary",
-  "Problem / Solution",
-  "Market Insight",
-  "Team Notes",
-  "Next Steps",
+  "Where are my keys?",
+  "Last seen on entry table",
+  "Glasses visible now",
+  "Wallet left frame",
+  "Frames deleted instantly",
 ];
 
 export default function HomePage() {
+  const primaryHref = hasSupabaseEnv() ? "/sign-up" : "/dashboard";
+  const primaryLabel = hasSupabaseEnv() ? "Open demo" : "Launch local demo";
+
   return (
     <main>
       <section className="overflow-hidden pt-10 sm:pt-14">
@@ -42,31 +46,31 @@ export default function HomePage() {
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-8">
               <AnimatedGroup>
-                <Badge>Case competition starter</Badge>
+                <Badge>Privacy-first accessibility demo</Badge>
                 <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-slate-950 sm:text-6xl [font-family:var(--font-display)]">
-                  Build the pitch, demo the product, and keep your team moving.
+                  Ambient object memory for people who cannot rely on memory alone.
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                  A fast Next.js + Supabase starter for hackathons, case competitions, and investor-style demos.
-                  Clean auth, a polished dashboard, and just enough structure to ship.
+                  Project Anchor helps TBI survivors recover the last known location of essentials like keys, glasses,
+                  and wallets with zero-friction local vision and a calm query interface.
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button asChild size="lg">
-                    <Link href="/sign-up">
-                      Start building
+                    <Link href={primaryHref}>
+                      {primaryLabel}
                       <ArrowRight className="size-4" />
                     </Link>
                   </Button>
                   <Button asChild variant="secondary" size="lg">
-                    <Link href="/dashboard">View dashboard</Link>
+                    <Link href="/dashboard?q=Where%20are%20my%20keys%3F">Ask Anchor</Link>
                   </Button>
                 </div>
               </AnimatedGroup>
               <div className="grid gap-3 sm:grid-cols-3">
                 {[
-                  { label: "Setup time", value: "~10 min" },
-                  { label: "Core stack", value: "Next + Supabase" },
-                  { label: "Best for", value: "Live demos" },
+                  { label: "Compute model", value: "Edge AI only" },
+                  { label: "Memory output", value: "SQLite metadata" },
+                  { label: "Primary user", value: "TBI survivors" },
                 ].map((item) => (
                   <Card key={item.label} className="p-4">
                     <p className="text-sm text-slate-500">{item.label}</p>
@@ -82,13 +86,14 @@ export default function HomePage() {
                 <div className="rounded-3xl bg-slate-950 p-5 text-white">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-white/70">Executive Summary</p>
-                      <p className="mt-2 text-2xl font-semibold">Northstar Health</p>
+                      <p className="text-sm text-white/70">Anchor response</p>
+                      <p className="mt-2 text-2xl font-semibold">Your keys were last seen on the entry table.</p>
                     </div>
-                    <BarChart3 className="size-10 text-teal-300" />
+                    <MapPinned className="size-10 text-teal-300" />
                   </div>
                   <p className="mt-4 text-sm leading-7 text-white/80">
-                    AI-assisted care navigation for underinsured patients with a focus on early intervention and guided scheduling.
+                    8:14 PM, confidence 91%. The object is currently out of view, so this is the last confirmed location
+                    before disappearance.
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -96,11 +101,11 @@ export default function HomePage() {
                     <Card key={block} className="border-slate-200/80 p-4">
                       <div className="flex items-center gap-3">
                         <div className="flex size-9 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]">
-                          <Lightbulb className="size-4" />
+                          <Brain className="size-4" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-slate-900">{block}</p>
-                          <p className="text-xs text-slate-500">Editable in the dashboard</p>
+                          <p className="text-xs text-slate-500">Live from local memory state</p>
                         </div>
                       </div>
                     </Card>
@@ -115,9 +120,9 @@ export default function HomePage() {
       <section className="pb-20 sm:pb-24">
         <Container>
           <SectionHeader
-            eyebrow="Built for speed"
-            title="A starter that is opinionated enough to help and small enough to understand."
-            description="The architecture stays close to the platform: App Router, server actions, Supabase SSR utilities, lightweight UI components, and documented setup."
+            eyebrow="Why it matters"
+            title="A niche accessibility tool with a big demo moment and an even bigger human need."
+            description="Project Anchor combines local computer vision, last-known-state tracking, and a simple dashboard so the user never needs to remember to remember."
           />
           <AnimatedGroup className="grid gap-4 md:grid-cols-3">
             {features.map((feature) => {

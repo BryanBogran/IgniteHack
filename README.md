@@ -1,35 +1,36 @@
-# Hackathon Starter
+# Project Anchor
 
-Production-quality starter for hackathons, case competitions, and pitch demos using Next.js App Router, TypeScript, Supabase SSR auth, Tailwind CSS, and Motion for React.
+Project Anchor is an ambient memory prosthetic for TBI survivors experiencing anterograde amnesia. A local Python vision worker watches trusted drop zones, stores only object metadata in SQLite, and the Next.js dashboard answers questions like "Where are my keys?" without requiring the user to remember to tag or log anything.
 
 ## Stack
 
 - Next.js App Router with TypeScript
-- Supabase for auth and Postgres
-- Tailwind CSS for styling
-- Motion for React for transitions and interaction polish
-- ESLint and strict TypeScript for fast iteration with guardrails
+- Supabase SSR auth for the local web dashboard
+- Tailwind CSS and Motion for React for the UI
+- Python, OpenCV, and YOLOv8 for edge vision
+- Local SQLite for object memory events and latest-known state
 
-## What You Get
+## What Ships In This MVP
 
-- Responsive landing page with a polished marketing feel
-- Supabase email/password auth
-- Protected dashboard route with session-aware navbar
-- Minimal project/profile/notes data model with RLS
-- Reusable UI components for buttons, cards, inputs, empty states, modal, and layout
-- Dashboard sections tailored for case competition workflows
-- Clear setup docs and environment template
+- Rebranded landing page and authenticated Project Anchor dashboard
+- Local SQLite read layer inside Next.js for status, sightings, and query answers
+- API routes for object state, system status, and lightweight text queries
+- Python vision worker scaffold with camera capture, YOLO detection, drop-zone mapping, tracking, heartbeat, and SQLite writes
+- Privacy-first messaging throughout the product: frames are processed locally and discarded immediately
 
-## Project Structure
+## Architecture
 
-```text
-app/
-components/
-lib/
-supabase/
-types/
-public/
-```
+1. The Python worker in [vision/main.py](/Users/bryan/Desktop/Ignite Hack/vision/main.py) opens a webcam with OpenCV.
+2. YOLOv8 detects a small set of high-value objects and maps practical aliases such as `cup -> mug`.
+3. The tracker keeps the latest visible position and marks objects as out of view after a disappearance threshold.
+4. Metadata is written to `data/project-anchor.db` in two SQLite tables:
+   - `object_sightings`
+   - `object_latest_state`
+5. The Next.js dashboard reads the local SQLite file through server-side helpers in [lib/anchor/store.ts](/Users/bryan/Desktop/Ignite Hack/lib/anchor/store.ts).
+6. Query parsing in [lib/anchor/query.ts](/Users/bryan/Desktop/Ignite Hack/lib/anchor/query.ts) answers deterministic prompts such as:
+   - `Where are my keys?`
+   - `When did you last see my glasses?`
+   - `Is my wallet visible right now?`
 
 ## Environment Variables
 
@@ -47,11 +48,12 @@ Required:
 Optional:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
-  Only for future server-side admin scripts. This starter does not use it by default.
+- `ANCHOR_DB_PATH`
+  Overrides the default local SQLite path. Defaults to `data/project-anchor.db`.
 
 ## Local Setup
 
-1. Install dependencies:
+1. Install the Next.js dependencies:
 
 ```bash
 npm install
@@ -59,73 +61,66 @@ npm install
 
 2. Add your Supabase project URL and anon key to `.env.local`.
 
-3. Start the development server:
+3. Install the Python worker dependencies:
+
+```bash
+cd vision
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cd ..
+```
+
+4. Start the web app:
 
 ```bash
 npm run dev
 ```
 
-4. Open `http://localhost:3000`.
+5. In a second terminal, start the local vision worker:
+
+```bash
+cd vision
+source .venv/bin/activate
+python main.py --preview
+```
+
+6. Open `http://localhost:3000`, sign in, and use the dashboard query box to ask Anchor where an object was last seen.
 
 ## Supabase Setup
 
 1. Create a new Supabase project.
 2. In Supabase, enable Email auth under `Authentication -> Providers`.
 3. Copy the project URL and anon key into `.env.local`.
-4. Open the SQL editor and run the migration in [supabase/migrations/202603271300_initial_schema.sql](/Users/chase/code/cosc-3380/group-project/webapp/hackmisso-26/supabase/migrations/202603271300_initial_schema.sql).
-5. Optional: update the UUID in [supabase/seed.sql](/Users/chase/code/cosc-3380/group-project/webapp/hackmisso-26/supabase/seed.sql) and run it for demo data.
+4. Run the migration in [supabase/migrations/202603271300_initial_schema.sql](/Users/bryan/Desktop/Ignite Hack/supabase/migrations/202603271300_initial_schema.sql).
+5. Optional: adjust the UUID in [supabase/seed.sql](/Users/bryan/Desktop/Ignite Hack/supabase/seed.sql) and run it for demo auth/profile data.
 
-## Auth Architecture
+## Project Structure
 
-- Middleware refreshes the Supabase session and protects `/dashboard`.
-- Server components use SSR-compatible Supabase clients.
-- Auth forms use server actions for sign-in, sign-up, and sign-out.
-- A trigger creates or updates `profiles` records when new auth users are created.
+```text
+app/
+components/
+lib/
+supabase/
+types/
+vision/
+data/
+```
 
-## Database Schema
+## API Endpoints
 
-Tables:
+- `GET /api/anchor/status`
+- `GET /api/anchor/objects`
+- `GET /api/anchor/objects?object=keys`
+- `GET /api/anchor/query?q=Where%20are%20my%20keys%3F`
 
-- `profiles`
-- `projects`
-- `notes`
+## Demo Notes
 
-Security:
-
-- Profiles are only visible and editable by the owning user.
-- Projects are only accessible to their owner.
-- Notes are scoped to the author and the owner of the related project.
-
-## Deployment Notes
-
-- Works on Vercel with environment variables set in the project settings.
-- Run the same SQL migration against the production Supabase project before launch.
-- Keep the anon key in client-facing env vars only. Do not expose the service role key to the browser.
-
-## What To Customize First
-
-1. Replace the landing page copy and brand styling.
-2. Adjust the `projects` schema to match your competition or demo workflow.
-3. Add your real dashboard sections, metrics, and project narrative blocks.
-4. Decide whether to add Supabase Storage uploads or a public share page.
-
-## Manual SQL To Run
-
-Run:
-
-- [supabase/migrations/202603271300_initial_schema.sql](/Users/chase/code/cosc-3380/group-project/webapp/hackmisso-26/supabase/migrations/202603271300_initial_schema.sql)
-
-Optional:
-
-- [supabase/seed.sql](/Users/chase/code/cosc-3380/group-project/webapp/hackmisso-26/supabase/seed.sql)
+- Default YOLO weights are strongest for `mug`, `glasses`, `phone`, and bag-like substitutes.
+- `keys` and `wallet` may need custom weights later, but the system already supports those labels in storage and query flows.
+- For the hackathon MVP, do not add voice or custom model training until the text-query path is stable.
 
 ## Commands
-
-Install:
-
-```bash
-npm install
-```
 
 Develop:
 
@@ -139,17 +134,8 @@ Lint:
 npm run lint
 ```
 
-Build:
+Typecheck:
 
 ```bash
-npm run build
+npm run typecheck
 ```
-
-## Optional Next Enhancements
-
-- Dark mode toggle
-- Supabase Storage file uploads for pitch assets
-- Toast notifications for form success and error states
-- Public read-only share page for project demos
-- Demo data generator for onboarding judges quickly
-# IgniteHack

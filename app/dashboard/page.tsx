@@ -1,25 +1,67 @@
 import { redirect } from "next/navigation";
-import { ActivityFeed } from "@/components/dashboard/activity-feed";
-import { DashboardIntro } from "@/components/dashboard/dashboard-intro";
-import { DashboardStats } from "@/components/dashboard/dashboard-stats";
-import { NotesPanel } from "@/components/dashboard/notes-panel";
-import { ProjectOverviewCard } from "@/components/dashboard/project-overview-card";
-import { ProjectSections } from "@/components/dashboard/project-sections";
-import { ProjectSettingsCard } from "@/components/dashboard/project-settings-card";
-import { SetupNotice } from "@/components/layout/setup-notice";
+import { AnchorHero } from "@/components/dashboard/anchor-hero";
+import { AnchorObjectsGrid } from "@/components/dashboard/anchor-objects-grid";
+import { AnchorQueryCard } from "@/components/dashboard/anchor-query-card";
+import { AnchorStats } from "@/components/dashboard/anchor-stats";
+import { AnchorSystemCard } from "@/components/dashboard/anchor-system-card";
+import { AnchorTimeline } from "@/components/dashboard/anchor-timeline";
+import { demoProfile } from "@/lib/anchor/demo";
+import { answerAnchorQuery } from "@/lib/anchor/query";
+import { getAnchorDashboardData } from "@/lib/anchor/store";
 import { createServerClientSafe } from "@/lib/supabase/server";
 import { getDashboardData } from "@/lib/data/dashboard";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ q?: string | string[] }>;
+}) {
+  const anchorParams = await ((searchParams ?? Promise.resolve({})) as Promise<{ q?: string | string[] }>);
+  const queryText = typeof anchorParams.q === "string" ? anchorParams.q : "";
+  const [anchorData, queryResult] = await Promise.all([
+    Promise.resolve(getAnchorDashboardData()),
+    Promise.resolve(queryText ? answerAnchorQuery(queryText) : null),
+  ]);
+
   if (!hasSupabaseEnv()) {
-    return <SetupNotice />;
+    return (
+      <div className="space-y-8">
+        <AnchorHero profile={demoProfile} />
+        <AnchorStats status={anchorData.status} />
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            <AnchorQueryCard initialQuery={queryText} result={queryResult} />
+            <AnchorObjectsGrid objects={anchorData.objects} />
+            <AnchorTimeline sightings={anchorData.sightings} />
+          </div>
+          <div className="space-y-6">
+            <AnchorSystemCard status={anchorData.status} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const supabase = await createServerClientSafe();
 
   if (!supabase) {
-    return <SetupNotice />;
+    return (
+      <div className="space-y-8">
+        <AnchorHero profile={demoProfile} />
+        <AnchorStats status={anchorData.status} />
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            <AnchorQueryCard initialQuery={queryText} result={queryResult} />
+            <AnchorObjectsGrid objects={anchorData.objects} />
+            <AnchorTimeline sightings={anchorData.sightings} />
+          </div>
+          <div className="space-y-6">
+            <AnchorSystemCard status={anchorData.status} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const {
@@ -30,21 +72,22 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  const data = await getDashboardData(supabase, user.id);
+  const [{ profile }] = await Promise.all([
+    getDashboardData(supabase, user.id),
+  ]);
 
   return (
     <div className="space-y-8">
-      <DashboardIntro profile={data.profile} project={data.project} />
-      <DashboardStats notesCount={data.notes.length} hasProject={Boolean(data.project)} />
+      <AnchorHero profile={profile} />
+      <AnchorStats status={anchorData.status} />
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-6">
-          <ProjectOverviewCard project={data.project} />
-          <ProjectSections />
-          <NotesPanel notes={data.notes} projectId={data.project?.id ?? null} />
-          <ActivityFeed notes={data.notes} />
+          <AnchorQueryCard initialQuery={queryText} result={queryResult} />
+          <AnchorObjectsGrid objects={anchorData.objects} />
+          <AnchorTimeline sightings={anchorData.sightings} />
         </div>
         <div className="space-y-6">
-          <ProjectSettingsCard profile={data.profile} project={data.project} />
+          <AnchorSystemCard status={anchorData.status} />
         </div>
       </div>
     </div>
