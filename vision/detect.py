@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable
 
 from ultralytics import YOLO
 
-from config import TRACKED_OBJECTS, YOLO_CLASS_ALIASES, Zone
+from config import TRACKED_OBJECTS, YOLO_CLASS_ALIASES
 
 
-@dataclass
+@dataclass(frozen=True)
 class Detection:
     label: str
     confidence: float
@@ -28,83 +29,36 @@ class Detection:
 
 
 class YoloObjectDetector:
-    def __init__(
-        self,
-        model_name: str = "yolov8n.pt",
-        confidence_threshold: float = 0.35,
-        image_size: int = 640,
-    ) -> None:
-        self.model = YOLO(model_name)
+    def __init__(self, model_name: str, confidence_threshold: float = 0.35, image_size: int = 640) -> None:
+        self.model = YOLO(self._resolve_model_path(model_name))
         self.confidence_threshold = confidence_threshold
         self.image_size = image_size
 
-    def detect(
-        self,
-        frame,
-        zones: Iterable[Zone] | None = None,
-        *,
-        include_full_frame: bool = False,
-    ) -> list[Detection]:
+    def detect(self, frame, zones: Iterable[object] | None = None, include_full_frame: bool = True) -> list[Detection]:
+        del zones
+        del include_full_frame
+
+        results = self.model.predict(
+            source=frame,
+            conf=self.confidence_threshold,
+            imgsz=self.image_size,
+            verbose=False,
+        )
+
         detections: list[Detection] = []
-
-        if include_full_frame or not zones:
-            detections.extend(self._detect_full_frame(frame))
-        if zones:
-            detections.extend(self._detect_zone_crops(frame, list(zones)))
-
-        return self._dedupe_by_label(detections)
-
-    def _detect_full_frame(self, frame) -> list[Detection]:
-        return self._extract_detections(self.model(frame, imgsz=self.image_size, verbose=False))
-
-    def _detect_zone_crops(self, frame, zones: list[Zone]) -> list[Detection]:
-        frame_height, frame_width = frame.shape[:2]
-        detections: list[Detection] = []
-
-        for zone in zones:
-            x1 = max(int(zone.x1 * frame_width), 0)
-            y1 = max(int(zone.y1 * frame_height), 0)
-            x2 = min(int(zone.x2 * frame_width), frame_width)
-            y2 = min(int(zone.y2 * frame_height), frame_height)
-
-            if x2 <= x1 or y2 <= y1:
-                continue
-
-            crop = frame[y1:y2, x1:x2]
-            if crop.size == 0:
-                continue
-
-            for detection in self._extract_detections(self.model(crop, imgsz=self.image_size, verbose=False)):
-                detections.append(
-                    Detection(
-                        label=detection.label,
-                        confidence=detection.confidence,
-                        bbox_x1=detection.bbox_x1 + x1,
-                        bbox_y1=detection.bbox_y1 + y1,
-                        bbox_x2=detection.bbox_x2 + x1,
-                        bbox_y2=detection.bbox_y2 + y1,
-                        zone_name=zone.name,
-                    )
-                )
-
-        return detections
-
-    def _extract_detections(self, results) -> list[Detection]:
-        detections: list[Detection] = []
-
         for result in results:
-            class_names = result.names
-            for box in result.boxes:
-                confidence = float(box.conf.item())
-                if confidence < self.confidence_threshold:
-                    continue
+            names = result.names
+            if result.boxes is None:
+                continue
 
-                class_id = int(box.cls.item())
-                raw_label = class_names[class_id].lower()
+            for box in result.boxes:
+                class_id = int(box.cls[0].item())
+                raw_label = str(names[class_id]).lower()
                 label = YOLO_CLASS_ALIASES.get(raw_label, raw_label)
                 if label not in TRACKED_OBJECTS:
-                    continue
+                  continue
 
+                confidence = float(box.conf[0].item())
                 x1, y1, x2, y2 = [float(value) for value in box.xyxy[0].tolist()]
                 detections.append(
                     Detection(
@@ -117,13 +71,25 @@ class YoloObjectDetector:
                     )
                 )
 
-        return detections
+        return self._dedupe_by_label(detections)
 
     def _dedupe_by_label(self, detections: Iterable[Detection]) -> list[Detection]:
         best_by_label: dict[str, Detection] = {}
+
         for detection in detections:
             current = best_by_label.get(detection.label)
             if current is None or detection.confidence > current.confidence:
                 best_by_label[detection.label] = detection
 
         return list(best_by_label.values())
+
+    def _resolve_model_path(self, model_name: str) -> str:
+        candidate = Path(model_name)
+        if candidate.exists():
+            return str(candidate)
+
+        fallback = Path(__file__).resolve().parent / model_name
+        if fallback.exists():
+            return str(fallback)
+
+        return model_name
