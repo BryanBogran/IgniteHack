@@ -55,7 +55,9 @@ class YoloObjectDetector:
         return self._dedupe_by_label(detections)
 
     def _detect_full_frame(self, frame) -> list[Detection]:
-        return self._extract_detections(self.model(frame, imgsz=self.image_size, verbose=False))
+        return self._extract_detections(
+            self.model(frame, imgsz=self.image_size, conf=self.confidence_threshold, verbose=False)
+        )
 
     def _detect_zone_crops(self, frame, zones: list[Zone]) -> list[Detection]:
         frame_height, frame_width = frame.shape[:2]
@@ -74,7 +76,9 @@ class YoloObjectDetector:
             if crop.size == 0:
                 continue
 
-            for detection in self._extract_detections(self.model(crop, imgsz=self.image_size, verbose=False)):
+            for detection in self._extract_detections(
+                self.model(crop, imgsz=self.image_size, conf=self.confidence_threshold, verbose=False)
+            ):
                 detections.append(
                     Detection(
                         label=detection.label,

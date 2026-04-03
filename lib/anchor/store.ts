@@ -151,6 +151,9 @@ export function getSystemStatus(): AnchorSystemStatus {
   const heartbeatRow = db
     .prepare(`select value from system_state where key = 'last_heartbeat_at' limit 1`)
     .get() as { value?: string } | undefined;
+  const cameraErrorRow = db
+    .prepare(`select value from system_state where key = 'camera_error' limit 1`)
+    .get() as { value?: string } | undefined;
   const objectCountRow = db
     .prepare(
       `
@@ -177,6 +180,7 @@ export function getSystemStatus(): AnchorSystemStatus {
     visibleObjects: Number(objectCountRow?.visible_objects ?? 0),
     lastHeartbeatAt,
     lastUpdateAt: objectCountRow?.last_update_at ?? lastHeartbeatAt ?? null,
+    cameraError: cameraErrorRow?.value ? cameraErrorRow.value : null,
     databasePath: getDatabasePath(),
   };
 }

@@ -6,7 +6,8 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const object = searchParams.get("object");
-  const limit = Number(searchParams.get("limit") ?? "12");
+  const limitParam = Number(searchParams.get("limit") ?? "12");
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 12;
 
   if (object) {
     return NextResponse.json({
@@ -16,6 +17,6 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     objects: getTrackedObjects(),
-    sightings: getRecentSightings(Number.isNaN(limit) ? 12 : limit),
+    sightings: getRecentSightings(limit),
   });
 }

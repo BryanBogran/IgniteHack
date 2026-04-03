@@ -7,7 +7,7 @@ import cv2
 
 from calibrate import calibrate_zones
 from camera import WebcamStream, list_camera_candidates, parse_camera_source
-from config import DEFAULT_DB_PATH, DEFAULT_ZONES_PATH, load_zones, resolve_zone
+from config import DEFAULT_ZONES_PATH, get_database_path, load_zones, resolve_zone
 from detect import YoloObjectDetector
 from storage import AnchorStorage
 from tracker import ObjectTracker, utc_now_iso
@@ -21,12 +21,13 @@ def parse_args() -> argparse.Namespace:
         help="Camera source index, device path, stream URL, or `auto` to probe common webcam indexes",
     )
     parser.add_argument("--model", default="yolov8n.pt", help="YOLO model path or weights name")
-    parser.add_argument("--imgsz", type=int, default=640, help="YOLO inference size. Larger values help small distant objects")
+    parser.add_argument("--imgsz", type=int, default=1280, help="YOLO inference size. Larger values help small distant objects")
     parser.add_argument("--frame-skip", type=int, default=3, help="Run YOLO every N frames")
-    parser.add_argument("--confidence", type=float, default=0.35, help="Detection confidence threshold")
+    parser.add_argument("--confidence", type=float, default=0.20, help="Detection confidence threshold")
     parser.add_argument("--preview", action="store_true", help="Show the live camera preview")
     parser.add_argument("--debug", action="store_true", help="Print heartbeat and frame progress even without detections")
     parser.add_argument("--calibrate", action="store_true", help="Capture a frame and save named room zones before tracking")
+    parser.add_argument("--db-path", default=str(get_database_path()), help="Path to the local SQLite database")
     parser.add_argument("--zones-file", default=str(DEFAULT_ZONES_PATH), help="Path to the saved JSON zone configuration")
     parser.add_argument("--list-cameras", action="store_true", help="Probe common webcam indexes and print the ones that return frames")
     parser.add_argument("--full-frame-detect", action="store_true", help="Also run YOLO on the entire frame in addition to calibrated zone crops")
@@ -78,6 +79,7 @@ def draw_detections(frame, detections, detection_zones) -> None:
 
 def main() -> None:
     args = parse_args()
+    database_path = Path(args.db_path).expanduser()
     zones_path = Path(args.zones_file)
     camera_source = parse_camera_source(args.camera)
 
@@ -102,10 +104,10 @@ def main() -> None:
         image_size=args.imgsz,
     )
     tracker = ObjectTracker(disappearance_seconds=4.0)
-    storage = AnchorStorage(DEFAULT_DB_PATH)
+    storage = AnchorStorage(database_path)
     zones = load_zones(zones_path)
 
-    print(f"Project Anchor worker started. Writing metadata to {DEFAULT_DB_PATH}")
+    print(f"Project Anchor worker started. Writing metadata to {database_path}")
     print(f"Using zone configuration from {zones_path}")
     print(f"Camera ready with {camera.describe()}")
     print("Press Ctrl+C to stop.")
@@ -114,11 +116,20 @@ def main() -> None:
 
     try:
         while True:
-            frame = camera.read()
+            try:
+                frame = camera.read()
+            except RuntimeError as error:
+                seen_at = utc_now_iso()
+                storage.record_worker_status("camera_error", str(error))
+                if args.debug:
+                    print(f"[{seen_at}] camera read failed: {error}")
+                continue
+
             frame_index += 1
 
             seen_at = utc_now_iso()
             storage.record_heartbeat(seen_at)
+            storage.record_worker_status("camera_error", "")
 
             if args.debug and frame_index % 10 == 0:
                 print(

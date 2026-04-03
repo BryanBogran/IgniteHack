@@ -61,6 +61,17 @@ class AnchorStorage:
         )
         self.connection.commit()
 
+    def record_worker_status(self, key: str, value: str) -> None:
+        self.connection.execute(
+            """
+            insert into system_state (key, value)
+            values (?, ?)
+            on conflict(key) do update set value = excluded.value
+            """,
+            (key, value),
+        )
+        self.connection.commit()
+
     def record_detection(self, detection, zone_name: str, seen_at: str, track_id: int) -> None:
         latest_row = self.connection.execute(
             """

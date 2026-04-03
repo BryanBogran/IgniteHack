@@ -37,6 +37,7 @@ export type AnchorSystemStatus = {
   visibleObjects: number;
   lastHeartbeatAt: string | null;
   lastUpdateAt: string | null;
+  cameraError: string | null;
   databasePath: string;
 };
 

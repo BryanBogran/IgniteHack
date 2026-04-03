@@ -36,6 +36,12 @@ export function AnchorSystemCard({ status }: { status: AnchorSystemStatus }) {
             <p className="mt-1 text-slate-500">Frames processed locally and discarded immediately after metadata extraction.</p>
           </div>
         </div>
+        {status.cameraError ? (
+          <div className="rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4">
+            <p className="font-medium text-amber-950">Latest camera error</p>
+            <p className="mt-1 text-sm text-amber-800">{status.cameraError}</p>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-6 rounded-[1.25rem] border border-slate-200 p-4">

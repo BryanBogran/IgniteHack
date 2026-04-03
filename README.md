@@ -1,6 +1,6 @@
 # Project Anchor
 
-Project Anchor is an ambient memory prosthetic for TBI survivors experiencing anterograde amnesia. A local Python vision worker watches trusted drop zones, stores only object metadata in SQLite, and the Next.js dashboard answers questions like "Where are my keys?" without requiring the user to remember to tag or log anything.
+Project Anchor is an ambient memory prosthetic for TBI survivors experiencing anterograde amnesia. A local Python vision worker watches trusted drop zones, stores only object metadata in SQLite, and exposes the latest-known object locations over a simple local API for a native iPhone client with haptic feedback.
 
 ## Stack
 
@@ -8,29 +8,27 @@ Project Anchor is an ambient memory prosthetic for TBI survivors experiencing an
 - Supabase SSR auth for the local web dashboard
 - Tailwind CSS and Motion for React for the UI
 - Python, OpenCV, and YOLOv8 for edge vision
+- FastAPI for the local network bridge
 - Local SQLite for object memory events and latest-known state
 
 ## What Ships In This MVP
 
-- Rebranded landing page and authenticated Project Anchor dashboard
-- Local SQLite read layer inside Next.js for status, sightings, and query answers
-- API routes for object state, system status, and lightweight text queries
 - Python vision worker scaffold with camera capture, YOLO detection, drop-zone mapping, tracking, heartbeat, and SQLite writes
+- Single-file local API that serves the latest-known object locations as JSON over Wi-Fi
+- Native iPhone client can use the API response to trigger haptics when an item is located
 - Privacy-first messaging throughout the product: frames are processed locally and discarded immediately
 
 ## Architecture
 
-1. The Python worker in [vision/main.py](/Users/chase/code/ignite-2026/IgniteHack/vision/main.py) opens a webcam with OpenCV and probes common camera backends automatically.
+1. The Python worker in [vision/main.py](/Users/chase/code/ignite-2026/IgniteHack/vision/main.py) is the only writer. It opens a webcam with OpenCV, probes common camera backends automatically, and attempts to reopen the capture if reads fail.
 2. YOLOv8 detects a small set of high-value objects and maps practical aliases such as `cup -> mug`.
 3. The tracker keeps the latest visible position and marks objects as out of view after a disappearance threshold.
-4. Metadata is written to `data/project-anchor.db` in two SQLite tables:
+4. Metadata is written to one local SQLite file, configurable with `ANCHOR_DB_PATH` or `--db-path`, using two main tables:
    - `object_sightings`
    - `object_latest_state`
-5. The Next.js dashboard reads the local SQLite file through server-side helpers in [lib/anchor/store.ts](/Users/chase/code/ignite-2026/IgniteHack/lib/anchor/store.ts).
-6. Query parsing in [lib/anchor/query.ts](/Users/chase/code/ignite-2026/IgniteHack/lib/anchor/query.ts) answers deterministic prompts such as:
-   - `Where are my keys?`
-   - `When did you last see my glasses?`
-   - `Is my wallet visible right now?`
+5. Lightweight worker health such as heartbeat and the latest camera error is also stored in SQLite `system_state`.
+6. [vision/anchor_api.py](/Users/chase/code/ignite-2026/IgniteHack/vision/anchor_api.py) reads the same SQLite file and exposes `GET /api/objects` on the local network.
+7. A native iPhone client can request `GET /api/objects?object=keys` and translate the response into a heavy haptic cue plus a plain-language location string.
 
 ## Environment Variables
 
@@ -53,15 +51,7 @@ Optional:
 
 ## Local Setup
 
-1. Install the Next.js dependencies:
-
-```bash
-npm install
-```
-
-2. Add your Supabase project URL and anon key to `.env.local`.
-
-3. Install the Python worker dependencies:
+1. Install the Python worker dependencies:
 
 ```bash
 cd vision
@@ -71,18 +61,12 @@ pip install -r requirements.txt
 cd ..
 ```
 
-4. Start the web app:
-
-```bash
-npm run dev
-```
-
-5. In a second terminal, start the local vision worker:
+2. Start the local vision worker with higher-resolution inference for small, distant objects:
 
 ```bash
 cd vision
 source .venv/bin/activate
-python main.py --preview
+python main.py --preview --imgsz 1280 --confidence 0.20 --frame-skip 2 --full-frame-detect
 ```
 
 If the default camera is not the one you want, inspect the available indexes and launch a specific source:
@@ -90,13 +74,26 @@ If the default camera is not the one you want, inspect the available indexes and
 ```bash
 python main.py --list-cameras
 python main.py --camera 1 --calibrate
-python main.py --camera 1 --preview
+python main.py --camera 1 --preview --imgsz 1280 --confidence 0.20 --frame-skip 2 --full-frame-detect
 ```
 
-The worker defaults to camera `0` and runs YOLO on every frame unless you raise `--frame-skip`. It also runs
-inference over calibrated zone crops to make small tabletop objects easier to detect.
+3. In another terminal, start the local API bridge:
 
-6. Open `http://localhost:3000`, sign in, and use the dashboard query box to ask Anchor where an object was last seen.
+```bash
+cd vision
+source .venv/bin/activate
+python anchor_api.py
+```
+
+The API listens on `http://0.0.0.0:8765` by default, so your iPhone can call it over the same Wi-Fi network using your laptop's LAN IP, for example:
+
+```text
+http://192.168.1.23:8765/api/objects
+http://192.168.1.23:8765/api/objects?object=keys
+```
+
+The worker now defaults to `--imgsz 1280` and `--confidence 0.20`. It also supports calibrated zone crops plus optional full-frame inference to make small tabletop objects easier to detect across the room.
+Use `--db-path /path/to/project-anchor.db` or `ANCHOR_DB_PATH=/path/to/project-anchor.db` if you want the worker and API to use a different SQLite file.
 
 ## Supabase Setup
 
@@ -120,10 +117,9 @@ data/
 
 ## API Endpoints
 
-- `GET /api/anchor/status`
-- `GET /api/anchor/objects`
-- `GET /api/anchor/objects?object=keys`
-- `GET /api/anchor/query?q=Where%20are%20my%20keys%3F`
+- `GET /health`
+- `GET /api/objects`
+- `GET /api/objects?object=keys`
 
 ## Demo Notes
 
@@ -132,6 +128,8 @@ data/
 - For the hackathon MVP, do not add voice or custom model training until the text-query path is stable.
 
 ## Commands
+
+For the full local testing command reference, see [COMMANDS.md](/Users/chase/code/ignite-2026/IgniteHack/COMMANDS.md).
 
 Develop:
 

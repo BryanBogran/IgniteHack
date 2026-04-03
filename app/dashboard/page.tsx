@@ -12,56 +12,14 @@ import { createServerClientSafe } from "@/lib/supabase/server";
 import { getDashboardData } from "@/lib/data/dashboard";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ q?: string | string[] }>;
-}) {
-  const anchorParams = await ((searchParams ?? Promise.resolve({})) as Promise<{ q?: string | string[] }>);
-  const queryText = typeof anchorParams.q === "string" ? anchorParams.q : "";
-  const [anchorData, queryResult] = await Promise.all([
-    Promise.resolve(getAnchorDashboardData()),
-    Promise.resolve(queryText ? answerAnchorQuery(queryText) : null),
-  ]);
-
+async function getDashboardProfile() {
   if (!hasSupabaseEnv()) {
-    return (
-      <div className="space-y-8">
-        <AnchorHero profile={demoProfile} />
-        <AnchorStats status={anchorData.status} />
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-6">
-            <AnchorQueryCard initialQuery={queryText} result={queryResult} />
-            <AnchorObjectsGrid objects={anchorData.objects} />
-            <AnchorTimeline sightings={anchorData.sightings} />
-          </div>
-          <div className="space-y-6">
-            <AnchorSystemCard status={anchorData.status} />
-          </div>
-        </div>
-      </div>
-    );
+    return demoProfile;
   }
 
   const supabase = await createServerClientSafe();
-
   if (!supabase) {
-    return (
-      <div className="space-y-8">
-        <AnchorHero profile={demoProfile} />
-        <AnchorStats status={anchorData.status} />
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-6">
-            <AnchorQueryCard initialQuery={queryText} result={queryResult} />
-            <AnchorObjectsGrid objects={anchorData.objects} />
-            <AnchorTimeline sightings={anchorData.sightings} />
-          </div>
-          <div className="space-y-6">
-            <AnchorSystemCard status={anchorData.status} />
-          </div>
-        </div>
-      </div>
-    );
+    return demoProfile;
   }
 
   const {
@@ -72,8 +30,21 @@ export default async function DashboardPage({
     redirect("/sign-in");
   }
 
-  const [{ profile }] = await Promise.all([
-    getDashboardData(supabase, user.id),
+  const { profile } = await getDashboardData(supabase, user.id);
+  return profile;
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ q?: string | string[] }>;
+}) {
+  const anchorParams = await ((searchParams ?? Promise.resolve({})) as Promise<{ q?: string | string[] }>);
+  const queryText = typeof anchorParams.q === "string" ? anchorParams.q : "";
+  const [anchorData, queryResult, profile] = await Promise.all([
+    Promise.resolve(getAnchorDashboardData()),
+    Promise.resolve(queryText ? answerAnchorQuery(queryText) : null),
+    getDashboardProfile(),
   ]);
 
   return (

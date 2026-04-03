@@ -16,6 +16,26 @@ const aliases: Record<string, AnchorObjectName> = {
   wallet: "wallet",
 };
 
+type QueryIntent = AnchorQueryResult["intent"];
+
+const queryPatterns: Array<{
+  intent: Extract<QueryIntent, "where" | "when" | "visible">;
+  pattern: RegExp;
+}> = [
+  {
+    intent: "where",
+    pattern: /^(?:where(?:\s+(?:are|is))?|where did (?:i|you))\s+(?:my\s+)?(.+?)\??$/,
+  },
+  {
+    intent: "when",
+    pattern: /^when (?:did you last see|was|were)\s+(?:my\s+)?(.+?)\??$/,
+  },
+  {
+    intent: "visible",
+    pattern: /^(?:is|are)\s+(?:my\s+)?(.+?)\s+(?:visible|here|out|still visible)(?:\s+right now)?\??$/,
+  },
+];
+
 function normalizeObjectName(value: string) {
   const normalized = value
     .trim()
@@ -30,20 +50,33 @@ function normalizeObjectName(value: string) {
   return aliases[normalized] ?? aliases[singular] ?? null;
 }
 
+function parseAnchorQuery(query: string) {
+  const normalized = query.trim().toLowerCase();
+
+  for (const candidate of queryPatterns) {
+    const match = normalized.match(candidate.pattern);
+    if (match) {
+      return {
+        intent: candidate.intent,
+        objectLabel: normalizeObjectName(match[1] ?? ""),
+      };
+    }
+  }
+
+  return {
+    intent: "unsupported" as const,
+    objectLabel: null,
+  };
+}
+
 function getObjectPhrase(objectLabel: string) {
   return `your ${objectLabel}`;
 }
 
 export function answerAnchorQuery(query: string): AnchorQueryResult {
-  const normalized = query.trim().toLowerCase();
-  const whereMatch = normalized.match(/where (?:are|did i leave|did you see)?\s*(?:my\s+)?(.+?)\??$/);
-  const whenMatch = normalized.match(/when (?:did you last see|was|were)\s*(?:my\s+)?(.+?)\??$/);
-  const visibleMatch = normalized.match(/(?:is|are)\s*(?:my\s+)?(.+?)\s*(?:visible|here|out)?\??$/);
+  const parsed = parseAnchorQuery(query);
 
-  const rawObject = whereMatch?.[1] ?? whenMatch?.[1] ?? visibleMatch?.[1] ?? "";
-  const objectLabel = normalizeObjectName(rawObject);
-
-  if (!objectLabel) {
+  if (!parsed.objectLabel) {
     return {
       query,
       matched: false,
@@ -55,40 +88,39 @@ export function answerAnchorQuery(query: string): AnchorQueryResult {
     };
   }
 
-  const objectState = getLatestObjectState(objectLabel);
-  const intent = whereMatch ? "where" : whenMatch ? "when" : "visible";
+  const objectState = getLatestObjectState(parsed.objectLabel);
 
   if (!objectState?.lastSeenAt) {
     return {
       query,
       matched: true,
-      intent,
-      objectLabel,
-      answer: `I have not seen ${getObjectPhrase(objectLabel)} yet. Place it inside a configured drop zone so Anchor can start tracking it.`,
+      intent: parsed.intent,
+      objectLabel: parsed.objectLabel,
+      answer: `I have not seen ${getObjectPhrase(parsed.objectLabel)} yet. Place it inside a configured drop zone so Anchor can start tracking it.`,
       objectState: objectState ?? null,
     };
   }
 
-  if (intent === "when") {
+  if (parsed.intent === "when") {
     return {
       query,
       matched: true,
-      intent,
-      objectLabel,
-      answer: `I last saw ${getObjectPhrase(objectLabel)} ${formatDateTime(objectState.lastSeenAt)}${objectState.zoneName ? ` in the ${objectState.zoneName.replace(/_/g, " ")}` : ""}.`,
+      intent: "when",
+      objectLabel: parsed.objectLabel,
+      answer: `I last saw ${getObjectPhrase(parsed.objectLabel)} ${formatDateTime(objectState.lastSeenAt)}${objectState.zoneName ? ` in the ${objectState.zoneName.replace(/_/g, " ")}` : ""}.`,
       objectState,
     };
   }
 
-  if (intent === "visible") {
+  if (parsed.intent === "visible") {
     return {
       query,
       matched: true,
-      intent,
-      objectLabel,
+      intent: "visible",
+      objectLabel: parsed.objectLabel,
       answer: objectState.isVisible
-        ? `${getObjectPhrase(objectLabel)} is visible now${objectState.zoneName ? ` in the ${objectState.zoneName.replace(/_/g, " ")}` : ""}.`
-        : `${getObjectPhrase(objectLabel)} is not visible right now. The last confirmed sighting was ${formatDateTime(objectState.lastSeenAt)}${objectState.zoneName ? ` in the ${objectState.zoneName.replace(/_/g, " ")}` : ""}.`,
+        ? `${getObjectPhrase(parsed.objectLabel)} is visible now${objectState.zoneName ? ` in the ${objectState.zoneName.replace(/_/g, " ")}` : ""}.`
+        : `${getObjectPhrase(parsed.objectLabel)} is not visible right now. The last confirmed sighting was ${formatDateTime(objectState.lastSeenAt)}${objectState.zoneName ? ` in the ${objectState.zoneName.replace(/_/g, " ")}` : ""}.`,
       objectState,
     };
   }
@@ -96,9 +128,9 @@ export function answerAnchorQuery(query: string): AnchorQueryResult {
   return {
     query,
     matched: true,
-    intent,
-    objectLabel,
-    answer: `${getObjectPhrase(objectLabel)} was last seen ${objectState.zoneName ? `in the ${objectState.zoneName.replace(/_/g, " ")}` : "in view"} at ${formatDateTime(objectState.lastSeenAt)}.${objectState.isVisible ? " It is still visible now." : " It is currently out of view, so this is the last known location."}`,
+    intent: "where",
+    objectLabel: parsed.objectLabel,
+    answer: `${getObjectPhrase(parsed.objectLabel)} was last seen ${objectState.zoneName ? `in the ${objectState.zoneName.replace(/_/g, " ")}` : "in view"} at ${formatDateTime(objectState.lastSeenAt)}.${objectState.isVisible ? " It is still visible now." : " It is currently out of view, so this is the last known location."}`,
     objectState,
   };
 }

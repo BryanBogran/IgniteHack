@@ -29,7 +29,6 @@ class WebcamStream:
 
     def read(self):
         deadline = time.monotonic() + self.open_timeout_seconds
-        last_error = "camera returned no frames"
 
         while time.monotonic() < deadline:
             ok, frame = self.capture.read()
@@ -37,10 +36,18 @@ class WebcamStream:
                 return frame
             time.sleep(0.05)
 
+        self.capture.release()
+        self.capture = self._open_capture()
+
+        if self.capture.isOpened():
+            ok, frame = self.capture.read()
+            if ok and frame is not None and frame.size > 0:
+                return frame
+
         raise RuntimeError(
             "Failed to read a frame from the webcam. "
             f"Opened source={self.selected_source!r} backend={self.selected_backend_name}. "
-            f"Last error: {last_error}."
+            "The worker attempted to reopen the capture but did not receive a frame."
         )
 
     def release(self) -> None:

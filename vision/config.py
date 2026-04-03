@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -39,6 +40,10 @@ DEFAULT_ZONES = [
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "project-anchor.db"
 DEFAULT_ZONES_PATH = Path(__file__).resolve().parents[1] / "data" / "zones.json"
+
+
+def get_database_path() -> Path:
+    return Path(os.environ.get("ANCHOR_DB_PATH", str(DEFAULT_DB_PATH))).expanduser()
 
 
 def resolve_zone(center_x: float, center_y: float, zones: Iterable[Zone] = DEFAULT_ZONES) -> str:
