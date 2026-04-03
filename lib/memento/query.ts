@@ -1,10 +1,10 @@
 import "server-only";
 
-import { getLatestObjectState } from "@/lib/anchor/store";
-import type { AnchorObjectName, AnchorQueryResult } from "@/lib/anchor/types";
+import { getLatestObjectState } from "@/lib/memento/store";
+import type { MementoObjectName, MementoQueryResult } from "@/lib/memento/types";
 import { formatDateTime } from "@/lib/utils";
 
-const aliases: Record<string, AnchorObjectName> = {
+const aliases: Record<string, MementoObjectName> = {
   bag: "bag",
   backpack: "bag",
   cup: "mug",
@@ -34,7 +34,7 @@ function getObjectPhrase(objectLabel: string) {
   return `your ${objectLabel}`;
 }
 
-export function answerAnchorQuery(query: string): AnchorQueryResult {
+export function answerMementoQuery(query: string): MementoQueryResult {
   const normalized = query.trim().toLowerCase();
   const whereMatch = normalized.match(/where (?:are|did i leave|did you see)?\s*(?:my\s+)?(.+?)\??$/);
   const whenMatch = normalized.match(/when (?:did you last see|was|were)\s*(?:my\s+)?(.+?)\??$/);

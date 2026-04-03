@@ -1,4 +1,4 @@
-export const anchorObjects = [
+export const mementoObjects = [
   "keys",
   "wallet",
   "glasses",
@@ -7,9 +7,9 @@ export const anchorObjects = [
   "bag",
 ] as const;
 
-export type AnchorObjectName = (typeof anchorObjects)[number];
+export type MementoObjectName = (typeof mementoObjects)[number];
 
-export type AnchorObjectState = {
+export type MementoObjectState = {
   objectLabel: string;
   zoneName: string | null;
   lastSeenAt: string | null;
@@ -21,7 +21,7 @@ export type AnchorObjectState = {
   visibilityState: "visible" | "last_seen" | "never_seen";
 };
 
-export type AnchorSighting = {
+export type MementoSighting = {
   id: number;
   objectLabel: string;
   zoneName: string | null;
@@ -31,7 +31,7 @@ export type AnchorSighting = {
   trackId: number | null;
 };
 
-export type AnchorSystemStatus = {
+export type MementoSystemStatus = {
   cameraOnline: boolean;
   trackedObjects: number;
   visibleObjects: number;
@@ -40,17 +40,17 @@ export type AnchorSystemStatus = {
   databasePath: string;
 };
 
-export type AnchorQueryResult = {
+export type MementoQueryResult = {
   query: string;
   matched: boolean;
   intent: "where" | "when" | "visible" | "unsupported";
   objectLabel: string | null;
   answer: string;
-  objectState: AnchorObjectState | null;
+  objectState: MementoObjectState | null;
 };
 
-export type AnchorDashboardData = {
-  objects: AnchorObjectState[];
-  sightings: AnchorSighting[];
-  status: AnchorSystemStatus;
+export type MementoDashboardData = {
+  objects: MementoObjectState[];
+  sightings: MementoSighting[];
+  status: MementoSystemStatus;
 };

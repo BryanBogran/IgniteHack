@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { getLiveFramePath } from "@/lib/anchor/live-frame";
+import { getLiveFramePath } from "@/lib/memento/live-frame";
 
 export const runtime = "nodejs";
 

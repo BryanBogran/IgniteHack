@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Pause, Play } from "lucide-react";
-import { AnchorObjectsGrid } from "@/components/dashboard/anchor-objects-grid";
-import { AnchorQueryCard } from "@/components/dashboard/anchor-query-card";
-import { AnchorStats } from "@/components/dashboard/anchor-stats";
-import { AnchorSystemCard } from "@/components/dashboard/anchor-system-card";
-import { AnchorTimeline } from "@/components/dashboard/anchor-timeline";
+import { MementoObjectsGrid } from "@/components/dashboard/memento-objects-grid";
+import { MementoQueryCard } from "@/components/dashboard/memento-query-card";
+import { MementoStats } from "@/components/dashboard/memento-stats";
+import { MementoSystemCard } from "@/components/dashboard/memento-system-card";
+import { MementoTimeline } from "@/components/dashboard/memento-timeline";
 import { Button } from "@/components/ui/button";
-import type { AnchorDashboardData, AnchorQueryResult } from "@/lib/anchor/types";
+import type { MementoDashboardData, MementoQueryResult } from "@/lib/memento/types";
 
 const REFRESH_MS = 2000;
 
@@ -26,9 +26,9 @@ export function DashboardLiveSections({
   initialQuery,
   initialQueryResult,
 }: {
-  initialData: AnchorDashboardData;
+  initialData: MementoDashboardData;
   initialQuery: string;
-  initialQueryResult: AnchorQueryResult | null;
+  initialQueryResult: MementoQueryResult | null;
 }) {
   const [data, setData] = useState(initialData);
   const [queryResult, setQueryResult] = useState(initialQueryResult);
@@ -52,13 +52,13 @@ export function DashboardLiveSections({
     const refresh = async () => {
       try {
         const [status, objectsResponse, nextQueryResult] = await Promise.all([
-          readJson<AnchorDashboardData["status"]>("/api/anchor/status"),
-          readJson<{ objects: AnchorDashboardData["objects"]; sightings: AnchorDashboardData["sightings"] }>(
-            "/api/anchor/objects?limit=12",
+          readJson<MementoDashboardData["status"]>("/api/memento/status"),
+          readJson<{ objects: MementoDashboardData["objects"]; sightings: MementoDashboardData["sightings"] }>(
+            "/api/memento/objects?limit=12",
           ),
           initialQuery
-            ? readJson<AnchorQueryResult>(`/api/anchor/query?q=${encodeURIComponent(initialQuery)}`)
-            : Promise.resolve<AnchorQueryResult | null>(null),
+            ? readJson<MementoQueryResult>(`/api/memento/query?q=${encodeURIComponent(initialQuery)}`)
+            : Promise.resolve<MementoQueryResult | null>(null),
         ]);
 
         if (cancelled) {
@@ -101,22 +101,22 @@ export function DashboardLiveSections({
           {isRefreshing ? "Pause dashboard updates" : "Resume dashboard updates"}
         </Button>
       </div>
-      <AnchorStats status={data.status} />
+      <MementoStats status={data.status} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <div className="space-y-6">
           <section id="search" className="scroll-mt-28" aria-labelledby="search-heading">
-            <AnchorQueryCard initialQuery={initialQuery} result={queryResult} />
+            <MementoQueryCard initialQuery={initialQuery} result={queryResult} />
           </section>
           <section id="items" className="scroll-mt-28" aria-labelledby="items-heading">
-            <AnchorObjectsGrid objects={data.objects} />
+            <MementoObjectsGrid objects={data.objects} />
           </section>
           <section id="activity" className="scroll-mt-28" aria-labelledby="activity-heading">
-            <AnchorTimeline sightings={data.sightings} />
+            <MementoTimeline sightings={data.sightings} />
           </section>
         </div>
         <div className="space-y-6">
           <section id="system" className="scroll-mt-28" aria-labelledby="system-heading">
-            <AnchorSystemCard status={data.status} />
+            <MementoSystemCard status={data.status} />
           </section>
         </div>
       </div>

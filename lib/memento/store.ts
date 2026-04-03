@@ -4,11 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import type {
-  AnchorDashboardData,
-  AnchorObjectState,
-  AnchorSighting,
-  AnchorSystemStatus,
-} from "@/lib/anchor/types";
+  MementoDashboardData,
+  MementoObjectState,
+  MementoSighting,
+  MementoSystemStatus,
+} from "@/lib/memento/types";
 
 const DEFAULT_DB_PATH = path.join(process.cwd(), "data", "memento.db");
 
@@ -17,7 +17,7 @@ type SqliteConnection = InstanceType<typeof Database>;
 let connection: SqliteConnection | null = null;
 
 function getDatabasePath() {
-  return process.env.ANCHOR_DB_PATH ?? DEFAULT_DB_PATH;
+  return process.env.MEMENTO_DB_PATH ?? DEFAULT_DB_PATH;
 }
 
 function getConnection() {
@@ -68,7 +68,7 @@ function getConnection() {
   return connection;
 }
 
-function mapObjectState(row: Record<string, unknown>): AnchorObjectState {
+function mapObjectState(row: Record<string, unknown>): MementoObjectState {
   return {
     objectLabel: String(row.object_label),
     zoneName: row.zone_name ? String(row.zone_name) : null,
@@ -85,7 +85,7 @@ function mapObjectState(row: Record<string, unknown>): AnchorObjectState {
   };
 }
 
-function mapSighting(row: Record<string, unknown>): AnchorSighting {
+function mapSighting(row: Record<string, unknown>): MementoSighting {
   return {
     id: Number(row.id),
     objectLabel: String(row.object_label),
@@ -146,7 +146,7 @@ export function getRecentSightings(limit = 10) {
   return rows.map(mapSighting);
 }
 
-export function getSystemStatus(): AnchorSystemStatus {
+export function getSystemStatus(): MementoSystemStatus {
   const db = getConnection();
   const heartbeatRow = db
     .prepare(`select value from system_state where key = 'last_heartbeat_at' limit 1`)
@@ -181,7 +181,7 @@ export function getSystemStatus(): AnchorSystemStatus {
   };
 }
 
-export function getAnchorDashboardData(limit = 12): AnchorDashboardData {
+export function getMementoDashboardData(limit = 12): MementoDashboardData {
   return {
     objects: getTrackedObjects(),
     sightings: getRecentSightings(limit),

@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-class AnchorStorage:
+class MementoStorage:
     def __init__(self, database_path: Path) -> None:
         database_path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(database_path)

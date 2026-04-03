@@ -9,7 +9,7 @@ from calibrate import calibrate_zones
 from camera import WebcamStream, list_camera_candidates, parse_camera_source
 from config import DEFAULT_DB_PATH, DEFAULT_LIVE_FRAME_PATH, DEFAULT_ZONES_PATH, load_zones, resolve_zone
 from detect import YoloObjectDetector
-from storage import AnchorStorage
+from storage import MementoStorage
 from tracker import ObjectTracker, utc_now_iso
 
 
@@ -119,7 +119,7 @@ def main() -> None:
         image_size=args.imgsz,
     )
     tracker = ObjectTracker(disappearance_seconds=4.0)
-    storage = AnchorStorage(DEFAULT_DB_PATH)
+    storage = MementoStorage(DEFAULT_DB_PATH)
     zones = load_zones(zones_path)
 
     print(f"Memento worker started. Writing metadata to {DEFAULT_DB_PATH}")

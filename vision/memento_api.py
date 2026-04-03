@@ -9,12 +9,12 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 
-DEFAULT_FRAME_WIDTH = float(os.environ.get("ANCHOR_FRAME_WIDTH", "1280"))
-DEFAULT_FRAME_HEIGHT = float(os.environ.get("ANCHOR_FRAME_HEIGHT", "720"))
+DEFAULT_FRAME_WIDTH = float(os.environ.get("MEMENTO_FRAME_WIDTH", "1280"))
+DEFAULT_FRAME_HEIGHT = float(os.environ.get("MEMENTO_FRAME_HEIGHT", "720"))
 
 
 def get_database_path() -> Path:
-    return Path(os.environ.get("ANCHOR_DB_PATH", Path(__file__).resolve().parents[1] / "data" / "project-anchor.db")).expanduser()
+    return Path(os.environ.get("MEMENTO_DB_PATH", Path(__file__).resolve().parents[1] / "data" / "memento.db")).expanduser()
 
 
 def get_connection() -> sqlite3.Connection:
@@ -39,7 +39,7 @@ def normalize_coordinate(value: Any, dimension: float) -> float | None:
     return max(0.0, min(1.0, numeric / dimension))
 
 
-app = FastAPI(title="Project Anchor Local API")
+app = FastAPI(title="Memento Local API")
 
 app.add_middleware(
     CORSMiddleware,

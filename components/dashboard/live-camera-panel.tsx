@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const REFRESH_MS = 1500;
-const INITIAL_FRAME_URL = "/api/anchor/live-frame";
+const INITIAL_FRAME_URL = "/api/memento/live-frame";
 
 function buildFrameUrl() {
-  return `/api/anchor/live-frame?t=${Date.now()}`;
+  return `/api/memento/live-frame?t=${Date.now()}`;
 }
 
 export function LiveCameraPanel() {

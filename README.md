@@ -26,8 +26,8 @@ Memento is an ambient memory prosthetic for TBI survivors experiencing anterogra
 4. Metadata is written to `data/memento.db` in two SQLite tables:
    - `object_sightings`
    - `object_latest_state`
-5. The Next.js dashboard reads the local SQLite file through server-side helpers in [lib/anchor/store.ts](/Users/chase/code/ignite-2026/IgniteHack/lib/anchor/store.ts).
-6. Query parsing in [lib/anchor/query.ts](/Users/chase/code/ignite-2026/IgniteHack/lib/anchor/query.ts) answers deterministic prompts such as:
+5. The Next.js dashboard reads the local SQLite file through server-side store helpers.
+6. Query parsing answers deterministic prompts such as:
    - `Where are my keys?`
    - `When did you last see my glasses?`
    - `Is my wallet visible right now?`
@@ -48,7 +48,7 @@ Required:
 Optional:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `ANCHOR_DB_PATH`
+- `MEMENTO_DB_PATH`
   Overrides the default local SQLite path. Defaults to `data/memento.db`.
 
 ## Local Setup
@@ -120,11 +120,11 @@ data/
 
 ## API Endpoints
 
-- `GET /api/anchor/status`
-- `GET /api/anchor/objects`
-- `GET /api/anchor/objects?object=keys`
-- `GET /api/anchor/query?q=Where%20are%20my%20keys%3F`
-- `GET /api/anchor/live-frame`
+- `GET /api/memento/status`
+- `GET /api/memento/objects`
+- `GET /api/memento/objects?object=keys`
+- `GET /api/memento/query?q=Where%20are%20my%20keys%3F`
+- `GET /api/memento/live-frame`
 
 ## Demo Notes
 

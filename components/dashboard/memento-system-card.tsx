@@ -1,10 +1,10 @@
 import { Shield, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import type { AnchorSystemStatus } from "@/lib/anchor/types";
+import type { MementoSystemStatus } from "@/lib/memento/types";
 import { formatDateTime } from "@/lib/utils";
 
-export function AnchorSystemCard({ status }: { status: AnchorSystemStatus }) {
+export function MementoSystemCard({ status }: { status: MementoSystemStatus }) {
   return (
     <Card className="border-white/10 bg-[linear-gradient(180deg,rgba(13,25,33,0.96),rgba(10,18,25,0.92))] p-6" aria-labelledby="system-heading">
       <div className="flex items-start justify-between gap-4">

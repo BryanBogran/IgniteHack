@@ -1,14 +1,14 @@
 import { Eye, MapPin, ScanSearch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import type { AnchorObjectState } from "@/lib/anchor/types";
+import type { MementoObjectState } from "@/lib/memento/types";
 import { formatDateTime } from "@/lib/utils";
 
 function prettyZone(zoneName: string | null) {
   return zoneName ? zoneName.replace(/_/g, " ") : "Unassigned zone";
 }
 
-export function AnchorObjectsGrid({ objects }: { objects: AnchorObjectState[] }) {
+export function MementoObjectsGrid({ objects }: { objects: MementoObjectState[] }) {
   return (
     <Card className="border-white/10 bg-[linear-gradient(180deg,rgba(13,25,33,0.96),rgba(10,18,25,0.92))] p-6" aria-labelledby="items-heading">
       <div className="flex items-center justify-between gap-4">

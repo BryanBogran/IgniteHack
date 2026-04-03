@@ -5,25 +5,20 @@ from pathlib import Path
 import cv2
 
 from camera import WebcamStream, parse_camera_source
-from config import DEFAULT_ZONES, DEFAULT_ZONES_PATH, save_zones
+from config import DEFAULT_ZONES_PATH, Zone, save_zones
 
 
-def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_ZONES_PATH) -> None:
+def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_ZONES_PATH) -> list[Zone]:
     source = parse_camera_source(camera_source)
     camera = WebcamStream(source=source)
+    frame = None
 
     try:
-        frame = camera.read()
-        preview = frame.copy()
-
-        instructions = [
-            "Project Anchor calibration",
-            "Press S to save the default zones.",
-            "Press Q to cancel.",
-        ]
+        print("Calibration mode")
+        print(f"Using {camera.describe()}")
+        print("Press Space to freeze the current frame for zone selection. Press Q or Esc to cancel.")
 
         while True:
-<<<<<<< Updated upstream
             live_frame = camera.read()
             preview = live_frame.copy()
             cv2.putText(
@@ -37,35 +32,17 @@ def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_Z
                 cv2.LINE_AA,
             )
             cv2.imshow("Memento Calibration", preview)
-=======
-            overlay = preview.copy()
-            for index, line in enumerate(instructions):
-                cv2.putText(
-                    overlay,
-                    line,
-                    (24, 40 + index * 28),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    (255, 255, 255),
-                    2,
-                    cv2.LINE_AA,
-                )
->>>>>>> Stashed changes
 
-            cv2.imshow("Project Anchor Calibration", overlay)
             key = cv2.waitKey(1) & 0xFF
-
-            if key == ord("s"):
-                save_zones(DEFAULT_ZONES, zones_path)
-                print(f"Saved default zones to {zones_path}")
-                break
-
-            if key == ord("q"):
-                print("Calibration cancelled.")
+            if key in (ord("q"), 27):
+                cv2.destroyAllWindows()
+                print("Calibration cancelled. Keeping the existing configuration.")
+                return []
+            if key == ord(" "):
+                frame = live_frame
                 break
     finally:
         camera.release()
-<<<<<<< Updated upstream
 
     cv2.destroyAllWindows()
 
@@ -105,6 +82,3 @@ def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_Z
         print("No zones were saved. Keeping the existing configuration.")
 
     return zones
-=======
-        cv2.destroyAllWindows()
->>>>>>> Stashed changes

@@ -1,10 +1,10 @@
 import { Camera, Clock3, Eye } from "lucide-react";
 import { AnimatedGroup } from "@/components/ui/animated-group";
 import { Card } from "@/components/ui/card";
-import type { AnchorSystemStatus } from "@/lib/anchor/types";
+import type { MementoSystemStatus } from "@/lib/memento/types";
 import { formatDateTime } from "@/lib/utils";
 
-const statItems = (status: AnchorSystemStatus) => [
+const statItems = (status: MementoSystemStatus) => [
   {
     label: "Camera status",
     value: status.cameraOnline ? "Online" : "Waiting",
@@ -22,7 +22,7 @@ const statItems = (status: AnchorSystemStatus) => [
   },
 ];
 
-export function AnchorStats({ status }: { status: AnchorSystemStatus }) {
+export function MementoStats({ status }: { status: MementoSystemStatus }) {
   return (
     <AnimatedGroup className="grid gap-4 md:grid-cols-3" role="list" aria-label="System summary">
       {statItems(status).map((item) => {

@@ -122,7 +122,7 @@ export default function HomePage() {
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
       <header className="rounded-[2rem] border border-white/12 bg-[#08141c] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8adcca]">Project Anchor</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8adcca]">Memento</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">
           Frequently Lost Items Heatmap
         </h1>

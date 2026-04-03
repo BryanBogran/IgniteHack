@@ -2,7 +2,7 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { AnchorQueryResult } from "@/lib/anchor/types";
+import type { MementoQueryResult } from "@/lib/memento/types";
 
 const starterPrompts = [
   "Where are my keys?",
@@ -10,12 +10,12 @@ const starterPrompts = [
   "Is my wallet visible right now?",
 ];
 
-export function AnchorQueryCard({
+export function MementoQueryCard({
   initialQuery,
   result,
 }: {
   initialQuery: string;
-  result: AnchorQueryResult | null;
+  result: MementoQueryResult | null;
 }) {
   return (
     <Card
@@ -39,11 +39,11 @@ export function AnchorQueryCard({
       </div>
 
       <form action="/dashboard" className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <label htmlFor="anchor-query-input" className="sr-only">
+        <label htmlFor="memento-query-input" className="sr-only">
           Ask Memento a question
         </label>
         <Input
-          id="anchor-query-input"
+          id="memento-query-input"
           name="q"
           defaultValue={initialQuery}
           placeholder="Where are my keys?"

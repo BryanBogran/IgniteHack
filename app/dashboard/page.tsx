@@ -3,8 +3,8 @@ import { DashboardLiveSections } from "@/components/dashboard/dashboard-live-sec
 import { LiveCameraPanel } from "@/components/dashboard/live-camera-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { answerAnchorQuery } from "@/lib/anchor/query";
-import { getAnchorDashboardData } from "@/lib/anchor/store";
+import { answerMementoQuery } from "@/lib/memento/query";
+import { getMementoDashboardData } from "@/lib/memento/store";
 
 const quickLinks = [
   {
@@ -32,11 +32,11 @@ export default async function DashboardPage({
 }: {
   searchParams?: Promise<{ q?: string | string[] }>;
 }) {
-  const anchorParams = await ((searchParams ?? Promise.resolve({})) as Promise<{ q?: string | string[] }>);
-  const queryText = typeof anchorParams.q === "string" ? anchorParams.q : "";
-  const [anchorData, queryResult] = await Promise.all([
-    Promise.resolve(getAnchorDashboardData()),
-    Promise.resolve(queryText ? answerAnchorQuery(queryText) : null),
+  const mementoParams = await ((searchParams ?? Promise.resolve({})) as Promise<{ q?: string | string[] }>);
+  const queryText = typeof mementoParams.q === "string" ? mementoParams.q : "";
+  const [mementoData, queryResult] = await Promise.all([
+    Promise.resolve(getMementoDashboardData()),
+    Promise.resolve(queryText ? answerMementoQuery(queryText) : null),
   ]);
 
   return (
@@ -100,7 +100,7 @@ export default async function DashboardPage({
       </section>
 
       <DashboardLiveSections
-        initialData={anchorData}
+        initialData={mementoData}
         initialQuery={queryText}
         initialQueryResult={queryResult}
       />

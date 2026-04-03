@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { ProfileRow } from "@/types/database";
 
-export function AnchorHero({ profile }: { profile: ProfileRow | null }) {
+export function MementoHero({ profile }: { profile: ProfileRow | null }) {
   return (
     <Card className="overflow-hidden border-white/50 bg-[linear-gradient(135deg,rgba(11,88,78,0.94),rgba(28,46,64,0.95))] p-6 text-white sm:p-8">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
