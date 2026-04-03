@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -37,6 +38,7 @@ DEFAULT_ZONES = [
 ]
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "project-anchor.db"
+DEFAULT_ZONES_PATH = Path(__file__).resolve().parents[1] / "data" / "zones.json"
 
 
 def resolve_zone(center_x: float, center_y: float, zones: Iterable[Zone] = DEFAULT_ZONES) -> str:
@@ -45,3 +47,44 @@ def resolve_zone(center_x: float, center_y: float, zones: Iterable[Zone] = DEFAU
             return zone.name
 
     return "unknown_zone"
+
+
+def load_zones(zones_path: Path = DEFAULT_ZONES_PATH) -> list[Zone]:
+    if not zones_path.exists():
+        return list(DEFAULT_ZONES)
+
+    with zones_path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+
+    zones = [
+        Zone(
+            name=str(item["name"]),
+            x1=float(item["x1"]),
+            y1=float(item["y1"]),
+            x2=float(item["x2"]),
+            y2=float(item["y2"]),
+        )
+        for item in payload.get("zones", [])
+    ]
+
+    return zones or list(DEFAULT_ZONES)
+
+
+def save_zones(zones: Iterable[Zone], zones_path: Path = DEFAULT_ZONES_PATH) -> None:
+    zones_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "zones": [
+            {
+                "name": zone.name,
+                "x1": zone.x1,
+                "y1": zone.y1,
+                "x2": zone.x2,
+                "y2": zone.y2,
+            }
+            for zone in zones
+        ]
+    }
+
+    with zones_path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+        handle.write("\n")
