@@ -27,31 +27,6 @@ const quickLinks = [
   },
 ];
 
-<<<<<<< HEAD
-async function getDashboardProfile() {
-  if (!hasSupabaseEnv()) {
-    return demoProfile;
-  }
-
-  const supabase = await createServerClientSafe();
-  if (!supabase) {
-    return demoProfile;
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/sign-in");
-  }
-
-  const { profile } = await getDashboardData(supabase, user.id);
-  return profile;
-}
-
-=======
->>>>>>> db4faa7 (changed dashboard UI)
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -59,16 +34,9 @@ export default async function DashboardPage({
 }) {
   const anchorParams = await ((searchParams ?? Promise.resolve({})) as Promise<{ q?: string | string[] }>);
   const queryText = typeof anchorParams.q === "string" ? anchorParams.q : "";
-<<<<<<< HEAD
-  const [anchorData, queryResult, profile] = await Promise.all([
-    Promise.resolve(getAnchorDashboardData()),
-    Promise.resolve(queryText ? answerAnchorQuery(queryText) : null),
-    getDashboardProfile(),
-=======
   const [anchorData, queryResult] = await Promise.all([
     Promise.resolve(getAnchorDashboardData()),
     Promise.resolve(queryText ? answerAnchorQuery(queryText) : null),
->>>>>>> db4faa7 (changed dashboard UI)
   ]);
 
   return (

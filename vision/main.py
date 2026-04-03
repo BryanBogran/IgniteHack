@@ -7,11 +7,8 @@ import cv2
 
 from calibrate import calibrate_zones
 from camera import WebcamStream, list_camera_candidates, parse_camera_source
-<<<<<<< HEAD
 from config import DEFAULT_ZONES_PATH, get_database_path, load_zones, resolve_zone
-=======
-from config import DEFAULT_DB_PATH, DEFAULT_LIVE_FRAME_PATH, DEFAULT_ZONES_PATH, load_zones, resolve_zone
->>>>>>> db4faa7 (changed dashboard UI)
+from config import DEFAULT_LIVE_FRAME_PATH
 from detect import YoloObjectDetector
 from storage import AnchorStorage
 from tracker import ObjectTracker, utc_now_iso
