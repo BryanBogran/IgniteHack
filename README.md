@@ -14,7 +14,7 @@ Project Anchor is an ambient memory prosthetic for TBI survivors experiencing an
 
 - Rebranded landing page and authenticated Project Anchor dashboard
 - Local SQLite read layer inside Next.js for status, sightings, and query answers
-- API routes for object state, system status, and lightweight text queries
+- API routes for object state, system status, lightweight text queries, and the latest live camera frame
 - Python vision worker scaffold with camera capture, YOLO detection, drop-zone mapping, tracking, heartbeat, and SQLite writes
 - Privacy-first messaging throughout the product: frames are processed locally and discarded immediately
 
@@ -82,7 +82,7 @@ npm run dev
 ```bash
 cd vision
 source .venv/bin/activate
-python main.py --preview
+python main.py
 ```
 
 If the default camera is not the one you want, inspect the available indexes and launch a specific source:
@@ -90,13 +90,13 @@ If the default camera is not the one you want, inspect the available indexes and
 ```bash
 python main.py --list-cameras
 python main.py --camera 1 --calibrate
-python main.py --camera 1 --preview
+python main.py --camera 1
 ```
 
 The worker defaults to camera `0` and runs YOLO on every frame unless you raise `--frame-skip`. It also runs
 inference over calibrated zone crops to make small tabletop objects easier to detect.
 
-6. Open `http://localhost:3000`, sign in, and use the dashboard query box to ask Anchor where an object was last seen.
+6. Open `http://localhost:3000`. The top of the dashboard now shows the latest webcam frame from the Python worker, and the query box can answer where an object was last seen.
 
 ## Supabase Setup
 
@@ -124,6 +124,7 @@ data/
 - `GET /api/anchor/objects`
 - `GET /api/anchor/objects?object=keys`
 - `GET /api/anchor/query?q=Where%20are%20my%20keys%3F`
+- `GET /api/anchor/live-frame`
 
 ## Demo Notes
 

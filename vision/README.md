@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python main.py --preview
+python main.py
 ```
 
 Calibrate your real room zones first:
@@ -45,6 +45,7 @@ The worker will:
 - Map detections into named room drop zones
 - Persist sightings and last-known state to `../data/project-anchor.db`
 - Update a heartbeat so the Next.js dashboard can show worker health
+- Publish the latest annotated webcam frame to `../data/live-frame.jpg` for the Next.js dashboard
 
 ## Notes
 
@@ -54,4 +55,5 @@ The worker will:
 - `keys` and `wallet` may need custom weights later, but the pipeline is already structured for that upgrade.
 - Stable camera placement matters. Re-run calibration whenever the camera angle changes.
 - Frames are processed locally and discarded after metadata extraction.
+- The dashboard live view reads only the latest saved frame, not a second direct camera connection.
 - On macOS, camera access also depends on Camera permission for the app launching Python, such as Terminal, iTerm, or your IDE.

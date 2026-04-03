@@ -24,19 +24,19 @@ const statItems = (status: AnchorSystemStatus) => [
 
 export function AnchorStats({ status }: { status: AnchorSystemStatus }) {
   return (
-    <AnimatedGroup className="grid gap-4 md:grid-cols-3">
+    <AnimatedGroup className="grid gap-4 md:grid-cols-3" role="list" aria-label="System summary">
       {statItems(status).map((item) => {
         const Icon = item.icon;
 
         return (
-          <Card key={item.label} className="p-5">
+          <Card key={item.label} className="border-white/10 bg-[linear-gradient(180deg,rgba(14,24,33,0.96),rgba(10,18,25,0.92))] p-5" role="listitem">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">{item.label}</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">{item.value}</p>
+                <p className="text-sm text-[var(--muted)]">{item.label}</p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{item.value}</p>
               </div>
               <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]">
-                <Icon className="size-5" />
+                <Icon className="size-5" aria-hidden="true" />
               </div>
             </div>
           </Card>
