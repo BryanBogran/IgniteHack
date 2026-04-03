@@ -5,8 +5,11 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+import uvicorn
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from config import DEFAULT_DB_PATH
 
 
 DEFAULT_FRAME_WIDTH = float(os.environ.get("MEMENTO_FRAME_WIDTH", "1280"))
@@ -14,14 +17,13 @@ DEFAULT_FRAME_HEIGHT = float(os.environ.get("MEMENTO_FRAME_HEIGHT", "720"))
 
 
 def get_database_path() -> Path:
-    return Path(os.environ.get("MEMENTO_DB_PATH", Path(__file__).resolve().parents[1] / "data" / "memento.db")).expanduser()
+    return Path(os.environ.get("MEMENTO_DB_PATH", DEFAULT_DB_PATH)).expanduser()
 
 
 def get_connection() -> sqlite3.Connection:
-    database_path = get_database_path()
-    database_path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(get_database_path(), timeout=5.0)
     connection.row_factory = sqlite3.Row
+    connection.execute("pragma busy_timeout = 5000")
     return connection
 
 
@@ -39,14 +41,19 @@ def normalize_coordinate(value: Any, dimension: float) -> float | None:
     return max(0.0, min(1.0, numeric / dimension))
 
 
-app = FastAPI(title="Memento Local API")
+def to_percent_coordinate(value: Any, dimension: float) -> int:
+    normalized = normalize_coordinate(value, dimension)
+    if normalized is None:
+        return 0
+
+    return int(round(normalized * 100))
+
+
+app = FastAPI(title="Memento API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["GET"],
     allow_headers=["*"],
@@ -59,61 +66,40 @@ def health() -> dict[str, str]:
 
 
 @app.get("/api/objects")
-def get_objects(object_label: str | None = Query(default=None, alias="object")) -> dict[str, Any]:
+def get_objects() -> dict[str, dict[str, object]]:
+    database_path = get_database_path()
+    if not database_path.exists():
+        return {}
+
     connection = get_connection()
 
     try:
-        query = """
+        rows = connection.execute(
+            """
             select
               object_label,
               zone_name,
               last_seen_at,
-              is_visible,
-              last_confidence,
               last_center_x,
-              last_center_y,
-              last_track_id,
-              visibility_state
+              last_center_y
             from object_latest_state
-        """
-        params: tuple[Any, ...] = ()
-
-        if object_label:
-            query += " where lower(object_label) = lower(?)"
-            params = (object_label,)
-
-        query += """
-            order by
-              case visibility_state when 'visible' then 0 when 'last_seen' then 1 else 2 end,
-              object_label asc
-        """
-
-        rows = connection.execute(query, params).fetchall()
-        objects = [
-            {
-                "label": row["object_label"],
-                "object_label": row["object_label"],
-                "zone_name": row["zone_name"],
-                "last_seen_at": row["last_seen_at"],
-                "is_visible": bool(row["is_visible"]),
-                "confidence": row["last_confidence"],
-                "x": normalize_coordinate(row["last_center_x"], DEFAULT_FRAME_WIDTH),
-                "y": normalize_coordinate(row["last_center_y"], DEFAULT_FRAME_HEIGHT),
-                "center_x": row["last_center_x"],
-                "center_y": row["last_center_y"],
-                "track_id": row["last_track_id"],
-                "visibility_state": row["visibility_state"],
-            }
-            for row in rows
-        ]
-
-        if object_label and not objects:
-            raise HTTPException(status_code=404, detail=f"No object found for '{object_label}'")
+            where visibility_state != 'never_seen'
+            order by object_label asc
+            """
+        ).fetchall()
 
         return {
-            "objects": objects,
-            "count": len(objects),
-            "database_path": str(get_database_path()),
+            str(row["object_label"]): {
+                "location": row["zone_name"] or "unknown_zone",
+                "last_seen": row["last_seen_at"],
+                "x": to_percent_coordinate(row["last_center_x"], DEFAULT_FRAME_WIDTH),
+                "y": to_percent_coordinate(row["last_center_y"], DEFAULT_FRAME_HEIGHT),
+            }
+            for row in rows
         }
     finally:
         connection.close()
+
+
+if __name__ == "__main__":
+    uvicorn.run("memento_api:app", host="0.0.0.0", port=5050, reload=False)

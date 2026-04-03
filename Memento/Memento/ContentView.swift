@@ -1,30 +1,52 @@
 import SwiftUI
-import Combine
 import AVFoundation
+import Combine
 import UIKit
 
-// Simple network manager for fetching locations.
-class ObjectLocationManager: ObservableObject {
-    @Published var locations: [String: [String: String]] = [:]
-    @Published var lastError: Error?
-    private var cancellable: AnyCancellable?
-    
-    // TODO: Paste your local IP below:
-    private let endpoint = "http://[INSERT_LOCAL_IP]:5000/api/objects"
+struct TrackedObject: Decodable {
+    let location: String
+    let lastSeen: String
+    let x: Int
+    let y: Int
 
-    func fetchLocations() {
-        guard let url = URL(string: endpoint) else { return }
-        cancellable = URLSession.shared.dataTaskPublisher(for: url)
-            .map { $0.data }
-            .decode(type: [String: [String: String]].self, decoder: JSONDecoder())
-            .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { [weak self] completion in
-                if case let .failure(error) = completion {
-                    self?.lastError = error
-                }
-            }, receiveValue: { [weak self] locations in
-                self?.locations = locations
-            })
+    enum CodingKeys: String, CodingKey {
+        case location
+        case lastSeen = "last_seen"
+        case x
+        case y
+    }
+}
+
+@MainActor
+final class ObjectLocationManager: ObservableObject {
+    @Published var locations: [String: TrackedObject] = [:]
+    @Published var lastErrorMessage: String?
+
+    func fetchLocations(from endpoint: String) async {
+        guard let url = URL(string: endpoint) else {
+            lastErrorMessage = "Invalid API URL."
+            return
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                lastErrorMessage = "Invalid server response."
+                return
+            }
+
+            guard 200..<300 ~= httpResponse.statusCode else {
+                lastErrorMessage = "Server returned status \(httpResponse.statusCode)."
+                return
+            }
+
+            let decoded = try JSONDecoder().decode([String: TrackedObject].self, from: data)
+            locations = decoded
+            lastErrorMessage = nil
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
     }
 }
 
@@ -37,21 +59,48 @@ struct ButtonConfig: Identifiable {
 
 struct ContentView: View {
     @StateObject private var locationManager = ObjectLocationManager()
-    @State private var locationMessage: String = ""
-    @State private var isFetching: Bool = false
+    @AppStorage("mementoAPIBaseURL") private var apiBaseURL = "http://192.168.1.1:5050"
+    @State private var locationMessage = ""
+    @State private var isFetching = false
     private let synthesizer = AVSpeechSynthesizer()
-    
-    let buttonConfigs: [ButtonConfig] = [
+
+    private let buttonConfigs: [ButtonConfig] = [
         ButtonConfig(label: "Where are my Keys?", key: "keys", symbol: "key.fill"),
         ButtonConfig(label: "Where is my Wallet?", key: "wallet", symbol: "wallet.pass.fill"),
         ButtonConfig(label: "Where are my Glasses?", key: "glasses", symbol: "eyeglasses")
     ]
 
+    private var endpoint: String {
+        "\(apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines))/api/objects"
+    }
+
     var body: some View {
-        VStack(spacing: 36) {
-            Spacer()
+        VStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Python API Base URL")
+                    .font(.headline)
+
+                TextField("http://192.168.1.23:5050", text: $apiBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                Text("Current endpoint: \(endpoint)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             ForEach(buttonConfigs) { config in
-                Button(action: { fetchAndHandle(for: config.key) }) {
+                Button {
+                    Task {
+                        await fetchAndHandle(for: config.key)
+                    }
+                } label: {
                     HStack(spacing: 24) {
                         Image(systemName: config.symbol)
                             .font(.system(size: 40, weight: .bold))
@@ -68,58 +117,69 @@ struct ContentView: View {
                             .stroke(Color.white, lineWidth: 5)
                     )
                 }
-                .accessibilityHint("Announces location with haptic feedback.")
+                .disabled(isFetching)
+                .accessibilityHint("Fetches the latest known location and announces it.")
                 .accessibilityAddTraits(.isButton)
             }
-            Spacer()
+
+            if let lastErrorMessage = locationManager.lastErrorMessage {
+                Text(lastErrorMessage)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+            }
+
             Text(locationMessage)
                 .font(.title.weight(.semibold))
                 .foregroundStyle(.yellow)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, minHeight: 80)
                 .accessibilityLabel(locationMessage)
+
             Spacer(minLength: 20)
         }
         .padding()
         .background(Color(.systemGray6))
-        .onAppear {
-            locationManager.fetchLocations()
+        .task {
+            await locationManager.fetchLocations(from: endpoint)
         }
         .refreshable {
-            locationManager.fetchLocations()
+            await locationManager.fetchLocations(from: endpoint)
         }
     }
 
-    func fetchAndHandle(for itemKey: String) {
+    private func fetchAndHandle(for itemKey: String) async {
         isFetching = true
-        // Re-fetch data to ensure freshness
-        locationManager.fetchLocations()
-        // Wait a fraction, then check
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            handleLookup(for: itemKey)
-        }
+        defer { isFetching = false }
+
+        await locationManager.fetchLocations(from: endpoint)
+        handleLookup(for: itemKey)
     }
-    
-    func handleLookup(for itemKey: String) {
+
+    private func handleLookup(for itemKey: String) {
         let feedback = UINotificationFeedbackGenerator()
         feedback.prepare()
-        guard let info = locationManager.locations[itemKey],
-              let location = info["location"],
-              let lastSeen = info["last_seen"] else {
+
+        guard let info = locationManager.locations[itemKey] else {
             feedback.notificationOccurred(.error)
-            let failMsg = "Sorry, I don't know where your \(itemKey)."
-            locationMessage = failMsg
-            speak(failMsg)
+            let failMessage = "I could not find your \(itemKey) in the local memory."
+            locationMessage = failMessage
+            speak(failMessage)
             return
         }
-        let message = "Your \(itemKey) were last seen at \(location) on \(lastSeen)."
+
+        let message = "Your \(itemKey) were last seen at \(info.location) on \(info.lastSeen)."
         locationMessage = message
         feedback.notificationOccurred(.success)
         speak(message)
     }
 
-    func speak(_ text: String) {
-        if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
+    private func speak(_ text: String) {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate

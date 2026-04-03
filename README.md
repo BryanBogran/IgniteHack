@@ -85,6 +85,17 @@ source .venv/bin/activate
 python main.py
 ```
 
+If you want the standalone Python API that exposes the latest object state written by the vision worker, run:
+
+```bash
+cd vision
+source .venv/bin/activate
+python memento_api.py
+```
+
+That server binds to `0.0.0.0:5050`, so other devices on the same local Wi-Fi can reach `http://YOUR_LOCAL_IP:5050/api/objects`.
+It reads from the same local SQLite database that `vision/main.py` writes to and returns the latest known object locations.
+
 If the default camera is not the one you want, inspect the available indexes and launch a specific source:
 
 ```bash
