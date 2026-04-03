@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 
 from calibrate import calibrate_zones
-from camera import WebcamStream
+from camera import WebcamStream, list_camera_candidates, parse_camera_source
 from config import DEFAULT_DB_PATH, DEFAULT_ZONES_PATH, load_zones, resolve_zone
 from detect import YoloObjectDetector
 from storage import AnchorStorage
@@ -15,14 +15,21 @@ from tracker import ObjectTracker, utc_now_iso
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Project Anchor local vision worker")
-    parser.add_argument("--camera", type=int, default=0, help="OpenCV camera source")
+    parser.add_argument(
+        "--camera",
+        default="0",
+        help="Camera source index, device path, stream URL, or `auto` to probe common webcam indexes",
+    )
     parser.add_argument("--model", default="yolov8n.pt", help="YOLO model path or weights name")
-    parser.add_argument("--frame-skip", type=int, default=4, help="Run YOLO every N frames")
+    parser.add_argument("--imgsz", type=int, default=640, help="YOLO inference size. Larger values help small distant objects")
+    parser.add_argument("--frame-skip", type=int, default=3, help="Run YOLO every N frames")
     parser.add_argument("--confidence", type=float, default=0.35, help="Detection confidence threshold")
     parser.add_argument("--preview", action="store_true", help="Show the live camera preview")
     parser.add_argument("--debug", action="store_true", help="Print heartbeat and frame progress even without detections")
     parser.add_argument("--calibrate", action="store_true", help="Capture a frame and save named room zones before tracking")
     parser.add_argument("--zones-file", default=str(DEFAULT_ZONES_PATH), help="Path to the saved JSON zone configuration")
+    parser.add_argument("--list-cameras", action="store_true", help="Probe common webcam indexes and print the ones that return frames")
+    parser.add_argument("--full-frame-detect", action="store_true", help="Also run YOLO on the entire frame in addition to calibrated zone crops")
     return parser.parse_args()
 
 
@@ -48,21 +55,59 @@ def draw_zones(frame, zones) -> None:
         )
 
 
+def draw_detections(frame, detections, detection_zones) -> None:
+    for detection in detections:
+        x1 = int(detection.bbox_x1)
+        y1 = int(detection.bbox_y1)
+        x2 = int(detection.bbox_x2)
+        y2 = int(detection.bbox_y2)
+        zone_name = detection_zones.get(detection.label, "unknown_zone")
+
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (240, 189, 92), 2)
+        cv2.putText(
+            frame,
+            f"{detection.label} {detection.confidence:.2f} {zone_name}",
+            (x1, max(24, y1 - 10)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (240, 189, 92),
+            2,
+            cv2.LINE_AA,
+        )
+
+
 def main() -> None:
     args = parse_args()
     zones_path = Path(args.zones_file)
+    camera_source = parse_camera_source(args.camera)
+
+    if args.list_cameras:
+        cameras = list_camera_candidates()
+        if cameras:
+            print("Available camera candidates:")
+            for camera in cameras:
+                print(f"- {camera}")
+        else:
+            print("No working camera indexes found. Check OS camera permissions or try a direct device path/URL.")
+        return
 
     if args.calibrate:
-        calibrate_zones(camera_source=args.camera, zones_path=zones_path)
+        calibrate_zones(camera_source=camera_source, zones_path=zones_path)
+        return
 
-    camera = WebcamStream(source=args.camera)
-    detector = YoloObjectDetector(model_name=args.model, confidence_threshold=args.confidence)
+    camera = WebcamStream(source=camera_source)
+    detector = YoloObjectDetector(
+        model_name=args.model,
+        confidence_threshold=args.confidence,
+        image_size=args.imgsz,
+    )
     tracker = ObjectTracker(disappearance_seconds=4.0)
     storage = AnchorStorage(DEFAULT_DB_PATH)
     zones = load_zones(zones_path)
 
     print(f"Project Anchor worker started. Writing metadata to {DEFAULT_DB_PATH}")
     print(f"Using zone configuration from {zones_path}")
+    print(f"Camera ready with {camera.describe()}")
     print("Press Ctrl+C to stop.")
 
     frame_index = 0
@@ -89,9 +134,14 @@ def main() -> None:
                         break
                 continue
 
-            detections = detector.detect(frame)
+            detections = detector.detect(
+                frame,
+                zones=zones,
+                include_full_frame=args.full_frame_detect,
+            )
             detection_zones = {
-                detection.label: resolve_zone(
+                detection.label: detection.zone_name
+                or resolve_zone(
                     detection.center_x / frame.shape[1],
                     detection.center_y / frame.shape[0],
                     zones,
@@ -118,6 +168,7 @@ def main() -> None:
 
             if args.preview:
                 draw_zones(frame, zones)
+                draw_detections(frame, detections, detection_zones)
                 cv2.imshow("Project Anchor Preview", frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break

@@ -20,14 +20,14 @@ Project Anchor is an ambient memory prosthetic for TBI survivors experiencing an
 
 ## Architecture
 
-1. The Python worker in [vision/main.py](/Users/bryan/Desktop/Ignite Hack/vision/main.py) opens a webcam with OpenCV.
+1. The Python worker in [vision/main.py](/Users/chase/code/ignite-2026/IgniteHack/vision/main.py) opens a webcam with OpenCV and probes common camera backends automatically.
 2. YOLOv8 detects a small set of high-value objects and maps practical aliases such as `cup -> mug`.
 3. The tracker keeps the latest visible position and marks objects as out of view after a disappearance threshold.
 4. Metadata is written to `data/project-anchor.db` in two SQLite tables:
    - `object_sightings`
    - `object_latest_state`
-5. The Next.js dashboard reads the local SQLite file through server-side helpers in [lib/anchor/store.ts](/Users/bryan/Desktop/Ignite Hack/lib/anchor/store.ts).
-6. Query parsing in [lib/anchor/query.ts](/Users/bryan/Desktop/Ignite Hack/lib/anchor/query.ts) answers deterministic prompts such as:
+5. The Next.js dashboard reads the local SQLite file through server-side helpers in [lib/anchor/store.ts](/Users/chase/code/ignite-2026/IgniteHack/lib/anchor/store.ts).
+6. Query parsing in [lib/anchor/query.ts](/Users/chase/code/ignite-2026/IgniteHack/lib/anchor/query.ts) answers deterministic prompts such as:
    - `Where are my keys?`
    - `When did you last see my glasses?`
    - `Is my wallet visible right now?`
@@ -85,6 +85,17 @@ source .venv/bin/activate
 python main.py --preview
 ```
 
+If the default camera is not the one you want, inspect the available indexes and launch a specific source:
+
+```bash
+python main.py --list-cameras
+python main.py --camera 1 --calibrate
+python main.py --camera 1 --preview
+```
+
+The worker defaults to camera `0` and runs YOLO on every frame unless you raise `--frame-skip`. It also runs
+inference over calibrated zone crops to make small tabletop objects easier to detect.
+
 6. Open `http://localhost:3000`, sign in, and use the dashboard query box to ask Anchor where an object was last seen.
 
 ## Supabase Setup
@@ -92,8 +103,8 @@ python main.py --preview
 1. Create a new Supabase project.
 2. In Supabase, enable Email auth under `Authentication -> Providers`.
 3. Copy the project URL and anon key into `.env.local`.
-4. Run the migration in [supabase/migrations/202603271300_initial_schema.sql](/Users/bryan/Desktop/Ignite Hack/supabase/migrations/202603271300_initial_schema.sql).
-5. Optional: adjust the UUID in [supabase/seed.sql](/Users/bryan/Desktop/Ignite Hack/supabase/seed.sql) and run it for demo auth/profile data.
+4. Run the migration in [supabase/migrations/202603271300_initial_schema.sql](/Users/chase/code/ignite-2026/IgniteHack/supabase/migrations/202603271300_initial_schema.sql).
+5. Optional: adjust the UUID in [supabase/seed.sql](/Users/chase/code/ignite-2026/IgniteHack/supabase/seed.sql) and run it for demo auth/profile data.
 
 ## Project Structure
 
