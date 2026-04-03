@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f8f4;
+  --foreground: #0f1720;
+  --card: rgba(255, 255, 255, 0.9);
+  --muted: #5d6776;
+  --border: rgba(15, 23, 32, 0.08);
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --accent-soft: #dff3ef;
+  --surface: #edf2ee;
+  --ring: rgba(15, 118, 110, 0.22);
+  --shadow: 0 24px 80px rgba(15, 23, 32, 0.08);
+  --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(17, 94, 89, 0.06), transparent 20%),
+    linear-gradient(180deg, #fbfcfa 0%, var(--background) 100%);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.16);
+}
+
+.glass-panel {
+  background: var(--card);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
