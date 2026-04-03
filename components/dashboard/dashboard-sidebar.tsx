@@ -14,7 +14,7 @@ export function DashboardSidebar() {
     <Card className="h-fit p-4 lg:sticky lg:top-24">
       <div className="rounded-[1.5rem] border border-white/8 bg-white/4 p-4">
         <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Navigation</p>
-        <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">Project Anchor dashboard</p>
+        <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">Memento dashboard</p>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Everything important is grouped into four sections.</p>
       </div>
 

@@ -38,7 +38,7 @@ DEFAULT_ZONES = [
     Zone("catch_all_bin", 0.66, 0.5, 1.0, 1.0),
 ]
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "project-anchor.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "memento.db"
 DEFAULT_ZONES_PATH = Path(__file__).resolve().parents[1] / "data" / "zones.json"
 DEFAULT_LIVE_FRAME_PATH = Path(os.getenv("ANCHOR_LIVE_FRAME_PATH", Path(__file__).resolve().parents[1] / "data" / "live-frame.jpg"))
 

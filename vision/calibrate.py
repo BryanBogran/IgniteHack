@@ -30,7 +30,7 @@ def calibrate_zones(camera_source: int | str = "auto", zones_path: Path = DEFAUL
                 2,
                 cv2.LINE_AA,
             )
-            cv2.imshow("Project Anchor Calibration", preview)
+            cv2.imshow("Memento Calibration", preview)
 
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):
@@ -51,7 +51,7 @@ def calibrate_zones(camera_source: int | str = "auto", zones_path: Path = DEFAUL
 
     print("Draw one box per zone, then press Enter or Space. Press Esc when you are done selecting boxes.")
 
-    rectangles = cv2.selectROIs("Project Anchor Calibration", frame, showCrosshair=True, fromCenter=False)
+    rectangles = cv2.selectROIs("Memento Calibration", frame, showCrosshair=True, fromCenter=False)
     cv2.destroyAllWindows()
 
     zones: list[Zone] = []

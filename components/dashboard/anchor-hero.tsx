@@ -13,7 +13,7 @@ export function AnchorHero({ profile }: { profile: ProfileRow | null }) {
           </Badge>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight [font-family:var(--font-display)] sm:text-5xl">
-              Project Anchor helps TBI survivors find the things memory leaves behind.
+              Memento helps TBI survivors find the things memory leaves behind.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-white/78 sm:text-base">
               A privacy-first room companion that watches trusted drop zones, stores only object metadata, and answers
@@ -37,7 +37,7 @@ export function AnchorHero({ profile }: { profile: ProfileRow | null }) {
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-white/55">Team</p>
-              <p className="mt-1 text-sm font-medium text-white/90">{profile?.team_name ?? "Project Anchor Demo"}</p>
+              <p className="mt-1 text-sm font-medium text-white/90">{profile?.team_name ?? "Memento Demo"}</p>
             </div>
           </div>
         </div>

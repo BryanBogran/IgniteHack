@@ -98,7 +98,7 @@ export function LiveCameraPanel() {
         <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/70">
           <img
             src={frameUrl}
-            alt="Live webcam feed from the Project Anchor worker"
+            alt="Live webcam feed from the Memento worker"
             className="aspect-video w-full object-cover"
             onLoad={() => setIsOnline(true)}
             onError={() => setIsOnline(false)}

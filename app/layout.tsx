@@ -4,7 +4,7 @@ import { RouteTransition } from "@/components/layout/route-transition";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Project Anchor",
+  title: "Memento",
   description: "Ambient memory support for TBI survivors with privacy-first local object tracking.",
 };
 

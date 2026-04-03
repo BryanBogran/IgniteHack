@@ -10,7 +10,7 @@ import type {
   AnchorSystemStatus,
 } from "@/lib/anchor/types";
 
-const DEFAULT_DB_PATH = path.join(process.cwd(), "data", "project-anchor.db");
+const DEFAULT_DB_PATH = path.join(process.cwd(), "data", "memento.db");
 
 type SqliteConnection = InstanceType<typeof Database>;
 

@@ -14,7 +14,7 @@ from tracker import ObjectTracker, utc_now_iso
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Project Anchor local vision worker")
+    parser = argparse.ArgumentParser(description="Memento local vision worker")
     parser.add_argument(
         "--camera",
         default="0",
@@ -122,7 +122,7 @@ def main() -> None:
     storage = AnchorStorage(DEFAULT_DB_PATH)
     zones = load_zones(zones_path)
 
-    print(f"Project Anchor worker started. Writing metadata to {DEFAULT_DB_PATH}")
+    print(f"Memento worker started. Writing metadata to {DEFAULT_DB_PATH}")
     print(f"Using zone configuration from {zones_path}")
     print(f"Publishing live frame to {live_frame_path}")
     print(f"Camera ready with {camera.describe()}")
@@ -149,7 +149,7 @@ def main() -> None:
             if frame_index % max(args.frame_skip, 1) != 0:
                 write_live_frame(preview_frame, live_frame_path)
                 if args.preview:
-                    cv2.imshow("Project Anchor Preview", preview_frame)
+                    cv2.imshow("Memento Preview", preview_frame)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
                 continue
@@ -190,11 +190,11 @@ def main() -> None:
             write_live_frame(preview_frame, live_frame_path)
 
             if args.preview:
-                cv2.imshow("Project Anchor Preview", preview_frame)
+                cv2.imshow("Memento Preview", preview_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
     except KeyboardInterrupt:
-        print("\nStopping Project Anchor worker...")
+        print("\nStopping Memento worker...")
     finally:
         camera.release()
         storage.close()

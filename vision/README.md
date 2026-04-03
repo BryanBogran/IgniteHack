@@ -1,6 +1,6 @@
-# Project Anchor Vision Worker
+# Memento Vision Worker
 
-This folder contains the local privacy-first computer vision loop for Project Anchor.
+This folder contains the local privacy-first computer vision loop for Memento.
 
 ## Install
 
@@ -43,7 +43,7 @@ The worker will:
 - Open the configured webcam with OpenCV
 - Run YOLO on calibrated zone crops by default, every 3 frames at `--imgsz 640`
 - Map detections into named room drop zones
-- Persist sightings and last-known state to `../data/project-anchor.db`
+- Persist sightings and last-known state to `../data/memento.db`
 - Update a heartbeat so the Next.js dashboard can show worker health
 - Publish the latest annotated webcam frame to `../data/live-frame.jpg` for the Next.js dashboard
 

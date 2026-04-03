@@ -12,7 +12,7 @@ export function AnchorTimeline({ sightings }: { sightings: AnchorSighting[] }) {
             Recent memory timeline
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-            The event history that powers Anchor’s last-known-location answers.
+            The event history that powers Memento&apos;s last-known-location answers.
           </p>
         </div>
         <Badge variant="outline">{sightings.length} events</Badge>

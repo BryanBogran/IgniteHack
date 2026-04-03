@@ -1,6 +1,6 @@
-# Project Anchor
+# Memento
 
-Project Anchor is an ambient memory prosthetic for TBI survivors experiencing anterograde amnesia. A local Python vision worker watches trusted drop zones, stores only object metadata in SQLite, and the Next.js dashboard answers questions like "Where are my keys?" without requiring the user to remember to tag or log anything.
+Memento is an ambient memory prosthetic for TBI survivors experiencing anterograde amnesia. A local Python vision worker watches trusted drop zones, stores only object metadata in SQLite, and the Next.js dashboard answers questions like "Where are my keys?" without requiring the user to remember to tag or log anything.
 
 ## Stack
 
@@ -12,7 +12,7 @@ Project Anchor is an ambient memory prosthetic for TBI survivors experiencing an
 
 ## What Ships In This MVP
 
-- Rebranded landing page and authenticated Project Anchor dashboard
+- Rebranded landing page and authenticated Memento dashboard
 - Local SQLite read layer inside Next.js for status, sightings, and query answers
 - API routes for object state, system status, lightweight text queries, and the latest live camera frame
 - Python vision worker scaffold with camera capture, YOLO detection, drop-zone mapping, tracking, heartbeat, and SQLite writes
@@ -23,7 +23,7 @@ Project Anchor is an ambient memory prosthetic for TBI survivors experiencing an
 1. The Python worker in [vision/main.py](/Users/chase/code/ignite-2026/IgniteHack/vision/main.py) opens a webcam with OpenCV and probes common camera backends automatically.
 2. YOLOv8 detects a small set of high-value objects and maps practical aliases such as `cup -> mug`.
 3. The tracker keeps the latest visible position and marks objects as out of view after a disappearance threshold.
-4. Metadata is written to `data/project-anchor.db` in two SQLite tables:
+4. Metadata is written to `data/memento.db` in two SQLite tables:
    - `object_sightings`
    - `object_latest_state`
 5. The Next.js dashboard reads the local SQLite file through server-side helpers in [lib/anchor/store.ts](/Users/chase/code/ignite-2026/IgniteHack/lib/anchor/store.ts).
@@ -49,7 +49,7 @@ Optional:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ANCHOR_DB_PATH`
-  Overrides the default local SQLite path. Defaults to `data/project-anchor.db`.
+  Overrides the default local SQLite path. Defaults to `data/memento.db`.
 
 ## Local Setup
 

@@ -7,7 +7,7 @@ export function SetupNotice() {
     <Card className="p-8">
       <h1 className="text-2xl font-semibold text-slate-950 [font-family:var(--font-display)]">Connect Supabase to continue</h1>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-        Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to your environment, then run the SQL migration in the Supabase dashboard. Project Anchor also supports a local demo mode without Supabase, but auth is required for the full multi-user flow.
+        Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to your environment, then run the SQL migration in the Supabase dashboard. Memento also supports a local demo mode without Supabase, but auth is required for the full multi-user flow.
       </p>
       <div className="mt-6">
         <Button asChild>

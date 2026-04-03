@@ -26,10 +26,10 @@ export function AnchorQueryCard({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 id="search-heading" className="text-sm font-semibold text-[var(--foreground)]">
-            Ask Anchor
+            Ask Memento
           </h2>
           <p id="search-description" className="mt-2 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-            Keep the language simple and direct. Anchor supports location, recency, and visibility checks for tracked
+            Keep the language simple and direct. Memento supports location, recency, and visibility checks for tracked
             essentials.
           </p>
         </div>
@@ -40,7 +40,7 @@ export function AnchorQueryCard({
 
       <form action="/dashboard" className="mt-6 flex flex-col gap-3 sm:flex-row">
         <label htmlFor="anchor-query-input" className="sr-only">
-          Ask Anchor a question
+          Ask Memento a question
         </label>
         <Input
           id="anchor-query-input"

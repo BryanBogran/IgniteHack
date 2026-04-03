@@ -50,7 +50,7 @@ export function answerAnchorQuery(query: string): AnchorQueryResult {
       intent: "unsupported",
       objectLabel: null,
       answer:
-        "Anchor can answer questions like “Where are my keys?”, “When did you last see my glasses?”, or “Is my wallet visible right now?”",
+        'Memento can answer questions like "Where are my keys?", "When did you last see my glasses?", or "Is my wallet visible right now?"',
       objectState: null,
     };
   }
@@ -64,7 +64,7 @@ export function answerAnchorQuery(query: string): AnchorQueryResult {
       matched: true,
       intent,
       objectLabel,
-      answer: `I have not seen ${getObjectPhrase(objectLabel)} yet. Place it inside a configured drop zone so Anchor can start tracking it.`,
+      answer: `I have not seen ${getObjectPhrase(objectLabel)} yet. Place it inside a configured drop zone so Memento can start tracking it.`,
       objectState: objectState ?? null,
     };
   }
