@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f4ef;
-  --foreground: #13202a;
-  --card: rgba(255, 255, 255, 0.9);
-  --muted: #55616d;
-  --border: rgba(19, 32, 42, 0.08);
-  --accent: #1c6b63;
-  --accent-strong: #114b4a;
-  --accent-soft: #dbeee7;
-  --surface: #e8ece5;
-  --ring: rgba(28, 107, 99, 0.2);
-  --shadow: 0 24px 80px rgba(19, 32, 42, 0.1);
+  --background: #091117;
+  --foreground: #e7f1ee;
+  --card: rgba(12, 22, 30, 0.82);
+  --muted: #9cb1ae;
+  --border: rgba(168, 212, 201, 0.14);
+  --accent: #41c7b0;
+  --accent-strong: #229b8c;
+  --accent-soft: rgba(65, 199, 176, 0.14);
+  --surface: #0f1b24;
+  --ring: rgba(65, 199, 176, 0.24);
+  --shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
   --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
 }
@@ -28,9 +28,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(28, 107, 99, 0.12), transparent 24%),
-    radial-gradient(circle at top right, rgba(17, 75, 74, 0.07), transparent 20%),
-    linear-gradient(180deg, #fbfbf8 0%, var(--background) 100%);
+    radial-gradient(circle at top left, rgba(65, 199, 176, 0.16), transparent 26%),
+    radial-gradient(circle at top right, rgba(35, 97, 130, 0.18), transparent 24%),
+    linear-gradient(180deg, #071015 0%, var(--background) 48%, #050b10 100%);
   color: var(--foreground);
   font-family: var(--font-body);
   text-rendering: optimizeLegibility;
@@ -41,6 +41,38 @@ a {
   text-decoration: none;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: #081219;
+  color: var(--foreground);
+  padding: 0.75rem 1rem;
+  transform: translateY(-200%);
+  transition: transform 0.2s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 button,
 input,
 textarea {
@@ -48,7 +80,7 @@ textarea {
 }
 
 ::selection {
-  background: rgba(28, 107, 99, 0.16);
+  background: rgba(65, 199, 176, 0.24);
 }
 
 .glass-panel {

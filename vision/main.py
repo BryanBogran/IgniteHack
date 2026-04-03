@@ -7,7 +7,11 @@ import cv2
 
 from calibrate import calibrate_zones
 from camera import WebcamStream, list_camera_candidates, parse_camera_source
+<<<<<<< HEAD
 from config import DEFAULT_ZONES_PATH, get_database_path, load_zones, resolve_zone
+=======
+from config import DEFAULT_DB_PATH, DEFAULT_LIVE_FRAME_PATH, DEFAULT_ZONES_PATH, load_zones, resolve_zone
+>>>>>>> db4faa7 (changed dashboard UI)
 from detect import YoloObjectDetector
 from storage import AnchorStorage
 from tracker import ObjectTracker, utc_now_iso
@@ -29,6 +33,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--calibrate", action="store_true", help="Capture a frame and save named room zones before tracking")
     parser.add_argument("--db-path", default=str(get_database_path()), help="Path to the local SQLite database")
     parser.add_argument("--zones-file", default=str(DEFAULT_ZONES_PATH), help="Path to the saved JSON zone configuration")
+    parser.add_argument(
+        "--live-frame-path",
+        default=str(DEFAULT_LIVE_FRAME_PATH),
+        help="Path where the latest webcam frame should be written for the web dashboard",
+    )
     parser.add_argument("--list-cameras", action="store_true", help="Probe common webcam indexes and print the ones that return frames")
     parser.add_argument("--full-frame-detect", action="store_true", help="Also run YOLO on the entire frame in addition to calibrated zone crops")
     return parser.parse_args()
@@ -77,10 +86,22 @@ def draw_detections(frame, detections, detection_zones) -> None:
         )
 
 
+def write_live_frame(frame, output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    if not ok:
+        raise RuntimeError(f"Failed to encode live frame for {output_path}")
+
+    temp_path = output_path.with_suffix(f"{output_path.suffix}.tmp")
+    temp_path.write_bytes(encoded.tobytes())
+    temp_path.replace(output_path)
+
+
 def main() -> None:
     args = parse_args()
     database_path = Path(args.db_path).expanduser()
     zones_path = Path(args.zones_file)
+    live_frame_path = Path(args.live_frame_path)
     camera_source = parse_camera_source(args.camera)
 
     if args.list_cameras:
@@ -109,6 +130,7 @@ def main() -> None:
 
     print(f"Project Anchor worker started. Writing metadata to {database_path}")
     print(f"Using zone configuration from {zones_path}")
+    print(f"Publishing live frame to {live_frame_path}")
     print(f"Camera ready with {camera.describe()}")
     print("Press Ctrl+C to stop.")
 
@@ -126,6 +148,8 @@ def main() -> None:
                 continue
 
             frame_index += 1
+            preview_frame = frame.copy()
+            draw_zones(preview_frame, zones)
 
             seen_at = utc_now_iso()
             storage.record_heartbeat(seen_at)
@@ -138,9 +162,9 @@ def main() -> None:
                 )
 
             if frame_index % max(args.frame_skip, 1) != 0:
+                write_live_frame(preview_frame, live_frame_path)
                 if args.preview:
-                    draw_zones(frame, zones)
-                    cv2.imshow("Project Anchor Preview", frame)
+                    cv2.imshow("Project Anchor Preview", preview_frame)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
                 continue
@@ -177,10 +201,11 @@ def main() -> None:
                 storage.mark_missing(track)
                 print(f"[{track.seen_at}] {track.label:<8} left view. Last known zone={track.zone_name} track={track.track_id}")
 
+            draw_detections(preview_frame, detections, detection_zones)
+            write_live_frame(preview_frame, live_frame_path)
+
             if args.preview:
-                draw_zones(frame, zones)
-                draw_detections(frame, detections, detection_zones)
-                cv2.imshow("Project Anchor Preview", frame)
+                cv2.imshow("Project Anchor Preview", preview_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
     except KeyboardInterrupt:

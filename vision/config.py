@@ -40,6 +40,7 @@ DEFAULT_ZONES = [
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "project-anchor.db"
 DEFAULT_ZONES_PATH = Path(__file__).resolve().parents[1] / "data" / "zones.json"
+DEFAULT_LIVE_FRAME_PATH = Path(os.getenv("ANCHOR_LIVE_FRAME_PATH", Path(__file__).resolve().parents[1] / "data" / "live-frame.jpg"))
 
 
 def get_database_path() -> Path:

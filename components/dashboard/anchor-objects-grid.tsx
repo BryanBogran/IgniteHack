@@ -10,11 +10,13 @@ function prettyZone(zoneName: string | null) {
 
 export function AnchorObjectsGrid({ objects }: { objects: AnchorObjectState[] }) {
   return (
-    <Card className="p-6">
+    <Card className="border-white/10 bg-[linear-gradient(180deg,rgba(13,25,33,0.96),rgba(10,18,25,0.92))] p-6" aria-labelledby="items-heading">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-950">Tracked essentials</p>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
+          <h2 id="items-heading" className="text-sm font-semibold text-[var(--foreground)]">
+            Tracked essentials
+          </h2>
+          <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
             Latest known state for every object the memory worker has seen.
           </p>
         </div>
@@ -24,11 +26,11 @@ export function AnchorObjectsGrid({ objects }: { objects: AnchorObjectState[] })
       {objects.length ? (
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           {objects.map((object) => (
-            <div key={object.objectLabel} className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
+            <div key={object.objectLabel} className="rounded-[1.5rem] border border-white/10 bg-white/4 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-semibold capitalize text-slate-950">{object.objectLabel}</p>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="text-lg font-semibold capitalize text-[var(--foreground)]">{object.objectLabel}</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
                     {object.isVisible ? "Visible now" : "Using last known state"}
                   </p>
                 </div>
@@ -37,7 +39,7 @@ export function AnchorObjectsGrid({ objects }: { objects: AnchorObjectState[] })
                 </Badge>
               </div>
 
-              <div className="mt-5 space-y-3 text-sm text-slate-700">
+              <div className="mt-5 space-y-3 text-sm text-white/78">
                 <div className="flex items-center gap-2">
                   <MapPin className="size-4 text-[var(--accent)]" />
                   <span className="capitalize">{prettyZone(object.zoneName)}</span>
@@ -59,7 +61,7 @@ export function AnchorObjectsGrid({ objects }: { objects: AnchorObjectState[] })
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-600">
+        <div className="mt-6 rounded-[1.5rem] border border-dashed border-white/12 bg-white/4 p-6 text-sm leading-7 text-[var(--muted)]">
           No objects have been stored yet. Start the Python worker and place a tracked item inside one of your configured
           drop zones to populate this grid.
         </div>

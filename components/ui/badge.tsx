@@ -13,9 +13,9 @@ export function Badge({
     <span
       className={cn(
         "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
-        variant === "default" && "bg-slate-950 text-white",
+        variant === "default" && "bg-[var(--foreground)] text-slate-950",
         variant === "soft" && "bg-[var(--accent-soft)] text-[var(--accent)]",
-        variant === "outline" && "border border-slate-200 text-slate-700",
+        variant === "outline" && "border border-[var(--border)] text-[var(--muted)]",
         className,
       )}
     >

@@ -13,6 +13,12 @@ Project Anchor is an ambient memory prosthetic for TBI survivors experiencing an
 
 ## What Ships In This MVP
 
+<<<<<<< HEAD
+=======
+- Rebranded landing page and authenticated Project Anchor dashboard
+- Local SQLite read layer inside Next.js for status, sightings, and query answers
+- API routes for object state, system status, lightweight text queries, and the latest live camera frame
+>>>>>>> db4faa7 (changed dashboard UI)
 - Python vision worker scaffold with camera capture, YOLO detection, drop-zone mapping, tracking, heartbeat, and SQLite writes
 - Single-file local API that serves the latest-known object locations as JSON over Wi-Fi
 - Native iPhone client can use the API response to trigger haptics when an item is located
@@ -66,7 +72,11 @@ cd ..
 ```bash
 cd vision
 source .venv/bin/activate
+<<<<<<< HEAD
 python main.py --preview --imgsz 1280 --confidence 0.20 --frame-skip 2 --full-frame-detect
+=======
+python main.py
+>>>>>>> db4faa7 (changed dashboard UI)
 ```
 
 If the default camera is not the one you want, inspect the available indexes and launch a specific source:
@@ -74,11 +84,16 @@ If the default camera is not the one you want, inspect the available indexes and
 ```bash
 python main.py --list-cameras
 python main.py --camera 1 --calibrate
+<<<<<<< HEAD
 python main.py --camera 1 --preview --imgsz 1280 --confidence 0.20 --frame-skip 2 --full-frame-detect
+=======
+python main.py --camera 1
+>>>>>>> db4faa7 (changed dashboard UI)
 ```
 
 3. In another terminal, start the local API bridge:
 
+<<<<<<< HEAD
 ```bash
 cd vision
 source .venv/bin/activate
@@ -94,6 +109,9 @@ http://192.168.1.23:8765/api/objects?object=keys
 
 The worker now defaults to `--imgsz 1280` and `--confidence 0.20`. It also supports calibrated zone crops plus optional full-frame inference to make small tabletop objects easier to detect across the room.
 Use `--db-path /path/to/project-anchor.db` or `ANCHOR_DB_PATH=/path/to/project-anchor.db` if you want the worker and API to use a different SQLite file.
+=======
+6. Open `http://localhost:3000`. The top of the dashboard now shows the latest webcam frame from the Python worker, and the query box can answer where an object was last seen.
+>>>>>>> db4faa7 (changed dashboard UI)
 
 ## Supabase Setup
 
@@ -117,9 +135,17 @@ data/
 
 ## API Endpoints
 
+<<<<<<< HEAD
 - `GET /health`
 - `GET /api/objects`
 - `GET /api/objects?object=keys`
+=======
+- `GET /api/anchor/status`
+- `GET /api/anchor/objects`
+- `GET /api/anchor/objects?object=keys`
+- `GET /api/anchor/query?q=Where%20are%20my%20keys%3F`
+- `GET /api/anchor/live-frame`
+>>>>>>> db4faa7 (changed dashboard UI)
 
 ## Demo Notes
 
