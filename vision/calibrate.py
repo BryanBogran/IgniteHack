@@ -48,7 +48,7 @@ def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_Z
                 )
 >>>>>>> Stashed changes
 
-            cv2.imshow("Project Anchor Calibration", overlay)
+            cv2.imshow("Memento Calibration", overlay)
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):
                 cv2.destroyAllWindows()
