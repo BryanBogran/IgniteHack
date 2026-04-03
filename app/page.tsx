@@ -31,7 +31,7 @@ type HeatmapItem = {
   isVisible: boolean;
 };
 
-const API_URL = "http://localhost:5000/api/objects";
+const API_URL = "http://localhost:5050/api/objects";
 
 function clampCoordinate(value: number | null) {
   if (value === null || Number.isNaN(value)) {

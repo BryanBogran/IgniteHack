@@ -19,6 +19,7 @@ def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_Z
         print("Press Space to freeze the current frame for zone selection. Press Q or Esc to cancel.")
 
         while True:
+<<<<<<< Updated upstream
             live_frame = camera.read()
             preview = live_frame.copy()
             cv2.putText(
@@ -32,7 +33,22 @@ def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_Z
                 cv2.LINE_AA,
             )
             cv2.imshow("Memento Calibration", preview)
+=======
+            overlay = preview.copy()
+            for index, line in enumerate(instructions):
+                cv2.putText(
+                    overlay,
+                    line,
+                    (24, 40 + index * 28),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (255, 255, 255),
+                    2,
+                    cv2.LINE_AA,
+                )
+>>>>>>> Stashed changes
 
+            cv2.imshow("Project Anchor Calibration", overlay)
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):
                 cv2.destroyAllWindows()
@@ -43,6 +59,7 @@ def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_Z
                 break
     finally:
         camera.release()
+<<<<<<< Updated upstream
 
     cv2.destroyAllWindows()
 
@@ -82,3 +99,6 @@ def calibrate_zones(camera_source: int | str = "0", zones_path: Path = DEFAULT_Z
         print("No zones were saved. Keeping the existing configuration.")
 
     return zones
+=======
+        cv2.destroyAllWindows()
+>>>>>>> Stashed changes
