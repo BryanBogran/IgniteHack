@@ -60,17 +60,23 @@ type HeatmapItem = {
 const OBJECTS_API_URL = "/api/memento/objects?limit=12";
 const STATUS_API_URL = "/api/memento/status";
 const LIVE_FRAME_API_URL = "/api/memento/live-frame";
+const DEFAULT_FRAME_WIDTH = 1280;
+const DEFAULT_FRAME_HEIGHT = 720;
 
-function clampCoordinate(value: number | null) {
+function clampCoordinate(value: number | null, dimension: number) {
   if (value === null || Number.isNaN(value)) {
     return null;
   }
 
-  if (value > 1) {
+  if (value <= 1) {
+    return Math.min(1, Math.max(0, value));
+  }
+
+  if (value <= 100) {
     return Math.min(1, Math.max(0, value / 100));
   }
 
-  return Math.min(1, Math.max(0, value));
+  return Math.min(1, Math.max(0, value / dimension));
 }
 
 function normaliseItems(payload: ApiResponse): HeatmapItem[] {
@@ -88,8 +94,8 @@ function normaliseItems(payload: ApiResponse): HeatmapItem[] {
     id: `${item.label ?? item.object_label ?? item.objectLabel ?? "item"}-${index}`,
     label: item.label ?? item.object_label ?? item.objectLabel ?? "Unknown item",
     zoneName: item.zone_name ?? item.zoneName ?? item.location ?? null,
-    x: clampCoordinate(item.x ?? item.center_x ?? item.lastCenterX ?? null),
-    y: clampCoordinate(item.y ?? item.center_y ?? item.lastCenterY ?? null),
+    x: clampCoordinate(item.x ?? item.center_x ?? item.lastCenterX ?? null, DEFAULT_FRAME_WIDTH),
+    y: clampCoordinate(item.y ?? item.center_y ?? item.lastCenterY ?? null, DEFAULT_FRAME_HEIGHT),
     confidence:
       typeof item.confidence === "number"
         ? item.confidence
@@ -163,7 +169,7 @@ function toPercent(value: number | null) {
 }
 
 function toPlotPercent(value: number | null, padding = 0.1) {
-  const normalized = clampCoordinate(value);
+  const normalized = clampCoordinate(value, 1);
   if (normalized === null) {
     return 50;
   }
