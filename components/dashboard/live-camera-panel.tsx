@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-const REFRESH_MS = 100;
+const REFRESH_MS = 25;
 const INITIAL_FRAME_URL = "/api/memento/live-frame";
 
 function buildFrameUrl() {
@@ -121,12 +121,12 @@ export function LiveCameraPanel() {
             <p id="live-camera-status" className="text-xs text-white/65" aria-live="polite">
               {isRefreshing
                 ? lastUpdatedAt
-                  ? `Live camera updates every 0.1 seconds. Last good frame ${new Intl.DateTimeFormat("en-US", {
+                  ? `Live camera updates every ${REFRESH_MS / 1000} seconds. Last good frame ${new Intl.DateTimeFormat("en-US", {
                       hour: "numeric",
                       minute: "2-digit",
                       second: "2-digit",
                     }).format(lastUpdatedAt)}.`
-                  : "Live camera updates every 0.1 seconds."
+                  : `Live camera updates every ${REFRESH_MS / 1000} seconds.`
                 : "Live camera updates paused."}
             </p>
           </div>
