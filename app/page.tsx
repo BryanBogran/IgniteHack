@@ -162,6 +162,15 @@ function toPercent(value: number | null) {
   return `${Math.round(value * 100)}%`;
 }
 
+function toPlotPercent(value: number | null, padding = 0.1) {
+  const normalized = clampCoordinate(value);
+  if (normalized === null) {
+    return 50;
+  }
+
+  return (padding + normalized * (1 - padding * 2)) * 100;
+}
+
 export default function HomePage() {
   const [items, setItems] = useState<HeatmapItem[]>([]);
   const [status, setStatus] = useState("Ready to load the latest lost-items data.");
@@ -460,8 +469,8 @@ export default function HomePage() {
                     key={item.id}
                     className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                     style={{
-                      left: `${(item.x ?? 0) * 100}%`,
-                      top: `${(item.y ?? 0) * 100}%`,
+                      left: `${toPlotPercent(item.x)}%`,
+                      top: `${toPlotPercent(item.y)}%`,
                     }}
                   >
                     <div
