@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import platform
 import time
+from threading import Event, Lock, Thread
 
 import cv2
 
@@ -22,28 +23,43 @@ class WebcamStream:
         self.open_timeout_seconds = max(open_timeout_seconds, 0.5)
         self.selected_source: int | str | None = None
         self.selected_backend_name = "unknown"
+        self._latest_frame = None
+        self._frame_lock = Lock()
+        self._stop_event = Event()
+        self._reader_thread: Thread | None = None
         self.capture = self._open_capture()
 
         if not self.capture.isOpened():
             raise RuntimeError(self._build_open_error())
 
+        self._reader_thread = Thread(target=self._reader_loop, name="memento-camera-reader", daemon=True)
+        self._reader_thread.start()
+
     def read(self):
         deadline = time.monotonic() + self.open_timeout_seconds
-        last_error = "camera returned no frames"
 
         while time.monotonic() < deadline:
-            ok, frame = self.capture.read()
-            if ok and frame is not None and frame.size > 0:
+            frame = self.get_latest_frame()
+            if frame is not None:
                 return frame
             time.sleep(0.05)
 
         raise RuntimeError(
             "Failed to read a frame from the webcam. "
             f"Opened source={self.selected_source!r} backend={self.selected_backend_name}. "
-            f"Last error: {last_error}."
+            "Last error: camera returned no frames."
         )
 
+    def get_latest_frame(self):
+        with self._frame_lock:
+            if self._latest_frame is None:
+                return None
+            return self._latest_frame.copy()
+
     def release(self) -> None:
+        self._stop_event.set()
+        if self._reader_thread is not None and self._reader_thread.is_alive():
+            self._reader_thread.join(timeout=1.0)
         if self.capture.isOpened():
             self.capture.release()
 
@@ -83,10 +99,22 @@ class WebcamStream:
             ok, frame = capture.read()
             attempts += 1
             if ok and frame is not None and frame.size > 0:
+                with self._frame_lock:
+                    self._latest_frame = frame.copy()
                 return True
             time.sleep(0.05)
 
         return False
+
+    def _reader_loop(self) -> None:
+        while not self._stop_event.is_set():
+            ok, frame = self.capture.read()
+            if ok and frame is not None and frame.size > 0:
+                with self._frame_lock:
+                    self._latest_frame = frame.copy()
+                continue
+
+            time.sleep(0.01)
 
     def _candidate_sources(self, source: int | str) -> list[tuple[int | str, str, int]]:
         backends = self._preferred_backends()

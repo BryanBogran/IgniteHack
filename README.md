@@ -104,8 +104,9 @@ python main.py --camera 1 --calibrate
 python main.py --camera 1
 ```
 
-The worker defaults to camera `0` and runs YOLO on every frame unless you raise `--frame-skip`. It also runs
-inference over calibrated zone crops to make small tabletop objects easier to detect.
+The worker defaults to camera `0` and publishes dashboard preview frames at `--preview-fps 10` with reduced JPEG
+quality so the website can refresh more smoothly. YOLO still runs in the main worker loop, so if you need more UI
+smoothness on weaker hardware, the first tuning knob is raising `--frame-skip`.
 
 6. Open `http://localhost:3000`. The top of the dashboard now shows the latest webcam frame from the Python worker, and the query box can answer where an object was last seen.
 

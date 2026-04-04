@@ -45,12 +45,14 @@ The worker will:
 - Map detections into named room drop zones
 - Persist sightings and last-known state to `../data/memento.db`
 - Update a heartbeat so the Next.js dashboard can show worker health
-- Publish the latest annotated webcam frame to `../data/live-frame.jpg` for the Next.js dashboard
+- Publish dashboard preview frames on a separate timer so the website can stay smoother even while YOLO is running
 
 ## Notes
 
 - Default YOLO weights work best for `mug`, `glasses`, `phone`, and bag-like substitutes.
+- The dashboard preview now defaults to `--preview-fps 10` and `--preview-jpeg-quality 65` for faster browser refreshes.
 - If you need more accuracy, first try `--imgsz 960` or `--full-frame-detect`. Both use more CPU.
+- If you need a smoother website preview on weaker hardware, try raising `--frame-skip` before moving to a streaming transport.
 - If that is still not enough, try a larger model such as `--model yolov8s.pt`.
 - `keys` and `wallet` may need custom weights later, but the pipeline is already structured for that upgrade.
 - Stable camera placement matters. Re-run calibration whenever the camera angle changes.

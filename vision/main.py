@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import threading
+import time
 from pathlib import Path
 
 import cv2
@@ -26,6 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--confidence", type=float, default=0.35, help="Detection confidence threshold")
     parser.add_argument("--preview", action="store_true", help="Show the live camera preview")
     parser.add_argument("--debug", action="store_true", help="Print heartbeat and frame progress even without detections")
+    parser.add_argument("--preview-fps", type=float, default=10.0, help="How often to publish dashboard preview frames")
+    parser.add_argument("--preview-jpeg-quality", type=int, default=65, help="JPEG quality for the dashboard preview frame")
     parser.add_argument("--calibrate", action="store_true", help="Capture a frame and save named room zones before tracking")
     parser.add_argument("--zones-file", default=str(DEFAULT_ZONES_PATH), help="Path to the saved JSON zone configuration")
     parser.add_argument(
@@ -81,9 +85,9 @@ def draw_detections(frame, detections, detection_zones) -> None:
         )
 
 
-def write_live_frame(frame, output_path: Path) -> None:
+def write_live_frame(frame, output_path: Path, jpeg_quality: int) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
     if not ok:
         raise RuntimeError(f"Failed to encode live frame for {output_path}")
 
@@ -129,13 +133,45 @@ def main() -> None:
     print("Press Ctrl+C to stop.")
 
     frame_index = 0
+    latest_detections: list = []
+    latest_detection_zones: dict[str, str] = {}
+    preview_lock = threading.Lock()
+    stop_preview = threading.Event()
+
+    def preview_publisher() -> None:
+        interval = 1.0 / max(args.preview_fps, 1.0)
+
+        while not stop_preview.is_set():
+            frame = camera.get_latest_frame()
+            if frame is not None:
+                preview_frame = frame.copy()
+                draw_zones(preview_frame, zones)
+
+                with preview_lock:
+                    detections_snapshot = list(latest_detections)
+                    detection_zones_snapshot = dict(latest_detection_zones)
+
+                if detections_snapshot:
+                    draw_detections(preview_frame, detections_snapshot, detection_zones_snapshot)
+
+                try:
+                    write_live_frame(
+                        preview_frame,
+                        live_frame_path,
+                        jpeg_quality=max(30, min(args.preview_jpeg_quality, 95)),
+                    )
+                except RuntimeError:
+                    pass
+
+            stop_preview.wait(interval)
+
+    preview_thread = threading.Thread(target=preview_publisher, name="memento-preview-publisher", daemon=True)
+    preview_thread.start()
 
     try:
         while True:
             frame = camera.read()
             frame_index += 1
-            preview_frame = frame.copy()
-            draw_zones(preview_frame, zones)
 
             seen_at = utc_now_iso()
             storage.record_heartbeat(seen_at)
@@ -147,8 +183,9 @@ def main() -> None:
                 )
 
             if frame_index % max(args.frame_skip, 1) != 0:
-                write_live_frame(preview_frame, live_frame_path)
                 if args.preview:
+                    preview_frame = frame.copy()
+                    draw_zones(preview_frame, zones)
                     cv2.imshow("Memento Preview", preview_frame)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
@@ -173,6 +210,10 @@ def main() -> None:
             if args.debug and not detections:
                 print(f"[{seen_at}] detection pass complete. No tracked objects found.")
 
+            with preview_lock:
+                latest_detections = list(detections)
+                latest_detection_zones = dict(detection_zones)
+
             for detection in detections:
                 track = next(event for event in tracked_events if event.label == detection.label)
                 storage.record_detection(detection, detection_zones[detection.label], seen_at, track.track_id)
@@ -186,16 +227,18 @@ def main() -> None:
                 storage.mark_missing(track)
                 print(f"[{track.seen_at}] {track.label:<8} left view. Last known zone={track.zone_name} track={track.track_id}")
 
-            draw_detections(preview_frame, detections, detection_zones)
-            write_live_frame(preview_frame, live_frame_path)
-
             if args.preview:
+                preview_frame = frame.copy()
+                draw_zones(preview_frame, zones)
+                draw_detections(preview_frame, detections, detection_zones)
                 cv2.imshow("Memento Preview", preview_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
     except KeyboardInterrupt:
         print("\nStopping Memento worker...")
     finally:
+        stop_preview.set()
+        preview_thread.join(timeout=1.0)
         camera.release()
         storage.close()
         if args.preview:
