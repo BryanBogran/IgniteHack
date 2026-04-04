@@ -14,6 +14,8 @@ from detect import YoloObjectDetector
 from storage import MementoStorage
 from tracker import ObjectTracker, utc_now_iso
 
+DEFAULT_MODEL_PATH = Path(__file__).resolve().parents[1] / "runs" / "detect" / "train3" / "weights" / "best.pt"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Memento local vision worker")
@@ -22,13 +24,13 @@ def parse_args() -> argparse.Namespace:
         default="0",
         help="Camera source index, device path, stream URL, or `auto` to probe common webcam indexes",
     )
-    parser.add_argument("--model", default="yolov8n.pt", help="YOLO model path or weights name")
+    parser.add_argument("--model", default=str(DEFAULT_MODEL_PATH), help="YOLO model path or weights name")
     parser.add_argument("--imgsz", type=int, default=640, help="YOLO inference size. Larger values help small distant objects")
-    parser.add_argument("--frame-skip", type=int, default=3, help="Run YOLO every N frames")
+    parser.add_argument("--frame-skip", type=int, default=6, help="Run YOLO every N frames")
     parser.add_argument("--confidence", type=float, default=0.35, help="Detection confidence threshold")
     parser.add_argument("--preview", action="store_true", help="Show the live camera preview")
     parser.add_argument("--debug", action="store_true", help="Print heartbeat and frame progress even without detections")
-    parser.add_argument("--preview-fps", type=float, default=10.0, help="How often to publish dashboard preview frames")
+    parser.add_argument("--preview-fps", type=float, default=4.0, help="How often to publish dashboard preview frames")
     parser.add_argument("--preview-jpeg-quality", type=int, default=65, help="JPEG quality for the dashboard preview frame")
     parser.add_argument("--calibrate", action="store_true", help="Capture a frame and save named room zones before tracking")
     parser.add_argument("--zones-file", default=str(DEFAULT_ZONES_PATH), help="Path to the saved JSON zone configuration")

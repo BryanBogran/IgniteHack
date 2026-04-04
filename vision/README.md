@@ -17,6 +17,9 @@ pip install -r requirements.txt
 python main.py
 ```
 
+`python main.py` now defaults to the trained custom weights at `../runs/detect/train3/weights/best.pt`.
+Override that with `--model` if you want to test a different checkpoint.
+
 Calibrate your real room zones first:
 
 ```bash
@@ -41,7 +44,8 @@ You can also pass a device path or stream URL to `--camera`.
 The worker will:
 
 - Open the configured webcam with OpenCV
-- Run YOLO on calibrated zone crops by default, every 3 frames at `--imgsz 640`
+- Run YOLO on calibrated zone crops by default, every 6 frames at `--imgsz 640`
+- Use the trained weights at `../runs/detect/train3/weights/best.pt` unless `--model` is provided
 - Map detections into named room drop zones
 - Persist sightings and last-known state to `../data/memento.db`
 - Update a heartbeat so the Next.js dashboard can show worker health
@@ -49,12 +53,12 @@ The worker will:
 
 ## Notes
 
-- Default YOLO weights work best for `mug`, `glasses`, `phone`, and bag-like substitutes.
-- The dashboard preview now defaults to `--preview-fps 10` and `--preview-jpeg-quality 65` for faster browser refreshes.
+- The tracked custom classes are `glasses`, `keys`, `phone`, and `wallet`.
+- The dashboard preview now defaults to `--preview-fps 4` and `--preview-jpeg-quality 65` to reduce lag on weaker machines.
 - If you need more accuracy, first try `--imgsz 960` or `--full-frame-detect`. Both use more CPU.
-- If you need a smoother website preview on weaker hardware, try raising `--frame-skip` before moving to a streaming transport.
-- If that is still not enough, try a larger model such as `--model yolov8s.pt`.
-- `keys` and `wallet` may need custom weights later, but the pipeline is already structured for that upgrade.
+- If you want even lighter tracking, try raising `--frame-skip` above the default `6`.
+- If you want faster responsiveness later, lower `--frame-skip` or raise `--preview-fps` once the worker is stable.
+- If you need to compare against another checkpoint, pass it explicitly, for example `python main.py --model ..\runs\detect\train3\weights\last.pt`.
 - Stable camera placement matters. Re-run calibration whenever the camera angle changes.
 - Frames are processed locally and discarded after metadata extraction.
 - The dashboard live view reads only the latest saved frame, not a second direct camera connection.

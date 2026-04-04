@@ -20,15 +20,12 @@ class Zone:
 
 
 YOLO_CLASS_ALIASES = {
-    "cup": "mug",
     "sunglasses": "glasses",
     "eyeglasses": "glasses",
-    "handbag": "wallet",
     "cell phone": "phone",
-    "backpack": "bag",
 }
 
-TRACKED_OBJECTS = {"keys", "wallet", "glasses", "mug", "phone", "bag"}
+TRACKED_OBJECTS = {"glasses", "keys", "phone", "wallet"}
 
 DEFAULT_ZONES = [
     Zone("entry_table", 0.0, 0.0, 0.5, 0.5),

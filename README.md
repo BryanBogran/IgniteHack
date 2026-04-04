@@ -21,7 +21,7 @@ Memento is an ambient memory prosthetic for TBI survivors experiencing anterogra
 ## Architecture
 
 1. The Python worker in [vision/main.py](/Users/chase/code/ignite-2026/IgniteHack/vision/main.py) opens a webcam with OpenCV and probes common camera backends automatically.
-2. YOLOv8 detects a small set of high-value objects and maps practical aliases such as `cup -> mug`.
+2. YOLO detects the trained item set `glasses`, `keys`, `phone`, and `wallet`, with a small alias layer for common label variations such as `eyeglasses -> glasses`.
 3. The tracker keeps the latest visible position and marks objects as out of view after a disappearance threshold.
 4. Metadata is written to `data/memento.db` in two SQLite tables:
    - `object_sightings`
@@ -85,6 +85,12 @@ source .venv/bin/activate
 python main.py
 ```
 
+The worker now defaults to the trained weights at `runs/detect/train3/weights/best.pt`. You only need `--model` when testing a different checkpoint:
+
+```bash
+python main.py --model ..\runs\detect\train3\weights\last.pt
+```
+
 If you want the standalone Python API that exposes the latest object state written by the vision worker, run:
 
 ```bash
@@ -104,9 +110,9 @@ python main.py --camera 1 --calibrate
 python main.py --camera 1
 ```
 
-The worker defaults to camera `0` and publishes dashboard preview frames at `--preview-fps 10` with reduced JPEG
-quality so the website can refresh more smoothly. YOLO still runs in the main worker loop, so if you need more UI
-smoothness on weaker hardware, the first tuning knob is raising `--frame-skip`.
+The worker defaults to camera `0`, publishes dashboard preview frames at `--preview-fps 4`, and runs YOLO every
+`6` frames by default to reduce lag on weaker hardware. If you need more responsiveness later, lower `--frame-skip`
+or raise `--preview-fps` after the worker is stable.
 
 6. Open `http://localhost:3000`. The top of the dashboard now shows the latest webcam frame from the Python worker, and the query box can answer where an object was last seen.
 
@@ -140,9 +146,9 @@ data/
 
 ## Demo Notes
 
-- Default YOLO weights are strongest for `mug`, `glasses`, `phone`, and bag-like substitutes.
-- `keys` and `wallet` may need custom weights later, but the system already supports those labels in storage and query flows.
-- For the hackathon MVP, do not add voice or custom model training until the text-query path is stable.
+- The default worker model is the trained custom checkpoint at `runs/detect/train3/weights/best.pt`.
+- The tracked item set is `glasses`, `keys`, `phone`, and `wallet`.
+- The current tracker is label-based, so it supports one active track per class label rather than multiple independent instances of the same item type.
 
 ## Commands
 
