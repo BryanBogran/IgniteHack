@@ -17,21 +17,50 @@ export function LiveCameraPanel() {
   const [frameUrl, setFrameUrl] = useState(INITIAL_FRAME_URL);
   const [isOnline, setIsOnline] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(true);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    setFrameUrl(buildFrameUrl());
-  }, []);
+    let cancelled = false;
+    let interval: number | null = null;
 
-  useEffect(() => {
-    if (!isRefreshing) {
-      return;
+    const loadLatestFrame = () =>
+      new Promise<void>((resolve) => {
+        const nextUrl = buildFrameUrl();
+        const image = new window.Image();
+
+        image.onload = () => {
+          if (!cancelled) {
+            setFrameUrl(nextUrl);
+            setIsOnline(true);
+            setLastUpdatedAt(Date.now());
+          }
+          resolve();
+        };
+
+        image.onerror = () => {
+          if (!cancelled) {
+            setIsOnline(false);
+          }
+          resolve();
+        };
+
+        image.src = nextUrl;
+      });
+
+    void loadLatestFrame();
+
+    if (isRefreshing) {
+      interval = window.setInterval(() => {
+        void loadLatestFrame();
+      }, REFRESH_MS);
     }
 
-    const interval = window.setInterval(() => {
-      setFrameUrl(buildFrameUrl());
-    }, REFRESH_MS);
-
-    return () => window.clearInterval(interval);
+    return () => {
+      cancelled = true;
+      if (interval !== null) {
+        window.clearInterval(interval);
+      }
+    };
   }, [isRefreshing]);
 
   return (
@@ -90,7 +119,15 @@ export function LiveCameraPanel() {
               {isRefreshing ? "Pause live updates" : "Resume live updates"}
             </Button>
             <p id="live-camera-status" className="text-xs text-white/65" aria-live="polite">
-              {isRefreshing ? "Live camera updates every 1.5 seconds." : "Live camera updates paused."}
+              {isRefreshing
+                ? lastUpdatedAt
+                  ? `Live camera updates every 1.5 seconds. Last good frame ${new Intl.DateTimeFormat("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    }).format(lastUpdatedAt)}.`
+                  : "Live camera updates every 1.5 seconds."
+                : "Live camera updates paused."}
             </p>
           </div>
         </div>
@@ -100,8 +137,6 @@ export function LiveCameraPanel() {
             src={frameUrl}
             alt="Live webcam feed from the Memento worker"
             className="aspect-video w-full object-cover"
-            onLoad={() => setIsOnline(true)}
-            onError={() => setIsOnline(false)}
             aria-describedby="live-camera-description"
           />
         </div>
