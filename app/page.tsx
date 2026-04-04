@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Clock3,
+  Grid3X3,
+  ImageOff,
+  Lock,
+  RefreshCw,
+  ScanSearch,
+  Wifi,
+} from "lucide-react";
 
 type ApiObject = {
   location?: string | null;
@@ -15,11 +24,26 @@ type ApiObject = {
   seen_at?: string | null;
   confidence?: number | null;
   is_visible?: boolean | null;
+  objectLabel?: string;
+  zoneName?: string | null;
+  lastSeenAt?: string | null;
+  isVisible?: boolean | null;
+  lastConfidence?: number | null;
+  lastCenterX?: number | null;
+  lastCenterY?: number | null;
 };
 
 type ApiResponse = {
   objects?: ApiObject[];
   [key: string]: unknown;
+};
+
+type StatusResponse = {
+  cameraOnline?: boolean;
+  trackedObjects?: number;
+  visibleObjects?: number;
+  lastHeartbeatAt?: string | null;
+  lastUpdateAt?: string | null;
 };
 
 type HeatmapItem = {
@@ -33,7 +57,9 @@ type HeatmapItem = {
   isVisible: boolean;
 };
 
-const API_URL = "http://localhost:5050/api/objects";
+const OBJECTS_API_URL = "/api/memento/objects?limit=12";
+const STATUS_API_URL = "/api/memento/status";
+const LIVE_FRAME_API_URL = "/api/memento/live-frame";
 
 function clampCoordinate(value: number | null) {
   if (value === null || Number.isNaN(value)) {
@@ -51,7 +77,7 @@ function normaliseItems(payload: ApiResponse): HeatmapItem[] {
   const rawItems = Array.isArray(payload.objects)
     ? payload.objects
     : Object.entries(payload)
-        .filter(([key, value]) => key !== "count" && key !== "database_path" && value && typeof value === "object")
+        .filter(([key, value]) => value && typeof value === "object")
         .map(([key, value]) => ({
           ...(value as ApiObject),
           label: key,
@@ -59,14 +85,19 @@ function normaliseItems(payload: ApiResponse): HeatmapItem[] {
         }));
 
   return rawItems.map((item, index) => ({
-    id: `${item.label ?? item.object_label ?? "item"}-${index}`,
-    label: item.label ?? item.object_label ?? "Unknown item",
-    zoneName: item.zone_name ?? item.location ?? null,
-    x: clampCoordinate(item.x ?? item.center_x ?? null),
-    y: clampCoordinate(item.y ?? item.center_y ?? null),
-    confidence: typeof item.confidence === "number" ? item.confidence : null,
-    lastSeenAt: item.last_seen_at ?? item.seen_at ?? null,
-    isVisible: Boolean(item.is_visible),
+    id: `${item.label ?? item.object_label ?? item.objectLabel ?? "item"}-${index}`,
+    label: item.label ?? item.object_label ?? item.objectLabel ?? "Unknown item",
+    zoneName: item.zone_name ?? item.zoneName ?? item.location ?? null,
+    x: clampCoordinate(item.x ?? item.center_x ?? item.lastCenterX ?? null),
+    y: clampCoordinate(item.y ?? item.center_y ?? item.lastCenterY ?? null),
+    confidence:
+      typeof item.confidence === "number"
+        ? item.confidence
+        : typeof item.lastConfidence === "number"
+          ? item.lastConfidence
+          : null,
+    lastSeenAt: item.last_seen_at ?? item.lastSeenAt ?? item.seen_at ?? null,
+    isVisible: Boolean(item.is_visible ?? item.isVisible),
   }));
 }
 
@@ -81,12 +112,49 @@ function formatTimestamp(value: string | null) {
   }
 
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(date);
 }
 
+function formatRelative(value: string | null) {
+  if (!value) {
+    return "Unknown";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const deltaMinutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
+  if (deltaMinutes < 1) {
+    return "just now";
+  }
+  if (deltaMinutes < 60) {
+    return `${deltaMinutes} minute${deltaMinutes === 1 ? "" : "s"} ago`;
+  }
+
+  const deltaHours = Math.round(deltaMinutes / 60);
+  if (deltaHours < 24) {
+    return `${deltaHours} hour${deltaHours === 1 ? "" : "s"} ago`;
+  }
+
+  const deltaDays = Math.round(deltaHours / 24);
+  return `${deltaDays} day${deltaDays === 1 ? "" : "s"} ago`;
+}
+
 function formatPercent(value: number | null) {
+  if (value === null) {
+    return "Unknown";
+  }
+
+  return `${Math.round(value * 100)}%`;
+}
+
+function toPercent(value: number | null) {
   if (value === null) {
     return "Unknown";
   }
@@ -99,249 +167,354 @@ export default function HomePage() {
   const [status, setStatus] = useState("Ready to load the latest lost-items data.");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cameraOnline, setCameraOnline] = useState(false);
+  const [frameVersion, setFrameVersion] = useState(0);
+  const [frameAvailable, setFrameAvailable] = useState(true);
+  const isRefreshingRef = useRef(false);
 
   const itemsWithCoordinates = useMemo(
     () => items.filter((item) => item.x !== null && item.y !== null),
     [items],
   );
 
-  async function loadData() {
-    setIsLoading(true);
+  const visibleItems = items.filter((item) => item.isVisible);
+  const liveFrameUrl = `${LIVE_FRAME_API_URL}?t=${frameVersion}`;
+
+  async function loadData(options?: { silent?: boolean }) {
+    if (isRefreshingRef.current) {
+      return;
+    }
+
+    const silent = options?.silent ?? false;
+    isRefreshingRef.current = true;
+
+    if (!silent) {
+      setIsLoading(true);
+      setStatus("Loading the latest lost-items coordinates.");
+    }
+
     setErrorMessage(null);
-    setStatus("Loading the latest lost-items coordinates.");
 
     try {
-      const response = await fetch(API_URL, { cache: "no-store" });
+      const [objectsResponse, systemStatus] = await Promise.all([
+        fetch(OBJECTS_API_URL, { cache: "no-store" }),
+        fetch(STATUS_API_URL, { cache: "no-store" }),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}.`);
+      if (!objectsResponse.ok) {
+        throw new Error(`Request failed with status ${objectsResponse.status}.`);
       }
 
-      const rawBody = await response.text();
-      if (!rawBody.trim()) {
-        throw new Error("The local API returned an empty response.");
+      if (!systemStatus.ok) {
+        throw new Error(`Status request failed with status ${systemStatus.status}.`);
       }
 
-      let payload: ApiResponse;
-      try {
-        payload = JSON.parse(rawBody) as ApiResponse;
-      } catch {
-        throw new Error("The local API returned invalid JSON.");
-      }
-
+      const payload = (await objectsResponse.json()) as ApiResponse;
+      const statusPayload = (await systemStatus.json()) as StatusResponse;
       const nextItems = normaliseItems(payload);
+
       setItems(nextItems);
-      setStatus(`Loaded ${nextItems.length} tracked item${nextItems.length === 1 ? "" : "s"} from the local API.`);
+      setCameraOnline(Boolean(statusPayload.cameraOnline));
+      setStatus(
+        `Loaded ${nextItems.length} tracked item${nextItems.length === 1 ? "" : "s"} from local storage.`,
+      );
+      setFrameVersion(Date.now());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       setItems([]);
-      setErrorMessage(`Unable to reach ${API_URL}. ${message}`);
+      setCameraOnline(false);
+      setErrorMessage(`Unable to reach the local Memento API. ${message}`);
       setStatus("The heatmap could not load data from the local API.");
     } finally {
-      setIsLoading(false);
+      isRefreshingRef.current = false;
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }
 
   useEffect(() => {
     void loadData();
+
+    const intervalId = window.setInterval(() => {
+      void loadData({ silent: true });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   return (
-    <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="rounded-[2rem] border border-white/12 bg-[#08141c] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8adcca]">Memento</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">
-          Frequently Lost Items Heatmap
-        </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-[#d7ebe6]">
-          This local dashboard helps users with TBI or memory impairment review where important items were last
-          recorded. The heatmap shows the most recent x and y coordinates reported by the local object API.
-        </p>
-        <p id="heatmap-summary" className="mt-4 max-w-3xl text-sm leading-7 text-[#c5ddd7]">
-          Use the refresh button to load the latest local data. The heatmap does not auto-refresh, animate, or move on
-          its own.
-        </p>
+    <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col p-4 md:p-6 lg:p-8">
+      <header className="mb-8 flex flex-col items-start justify-between gap-6 border-b border-[#2A3441] pb-6 md:flex-row md:items-center">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <h1 className="text-4xl font-bold tracking-tight text-[#F1F5F9]">Memento</h1>
+            <div className="flex items-center gap-2 rounded-full border border-[#2A3441] bg-[#151B26] px-4 py-1.5">
+              <span
+                className={
+                  cameraOnline
+                    ? "h-3 w-3 rounded-full bg-[#22C55E] shadow-[0_0_12px_rgba(34,197,94,0.7)]"
+                    : "h-3 w-3 rounded-full bg-[#F59E0B] shadow-[0_0_12px_rgba(245,158,11,0.55)]"
+                }
+                aria-hidden="true"
+              />
+              <span className="text-sm font-medium text-[#F1F5F9]">
+                {cameraOnline ? "Local System Online" : "Waiting for camera worker"}
+              </span>
+            </div>
+          </div>
+          <p className="max-w-2xl text-lg text-[#94A3B8]">
+            Secure, local memory assist. Use this dashboard to locate your frequently misplaced essential items.
+          </p>
+          <div className="mt-1 flex w-fit items-center gap-2 rounded-md border border-[#2A3441]/60 bg-[#151B26]/60 px-3 py-1 text-[#94A3B8]">
+            <Lock className="size-4" aria-hidden="true" />
+            <span className="text-sm font-mono">local.memento.device</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void loadData()}
+          disabled={isLoading}
+          className="flex min-h-[56px] min-w-[220px] items-center justify-center gap-3 rounded-xl bg-[#0DE2C8] px-8 py-4 text-lg font-bold text-[#0A0E17] shadow-lg shadow-[#0DE2C8]/10 transition-colors hover:bg-[#34F0D9] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0DE2C8]/50 disabled:cursor-not-allowed disabled:opacity-70"
+          aria-describedby="dashboard-status"
+        >
+          <RefreshCw className="size-6" aria-hidden="true" />
+          {isLoading ? "Refreshing" : "Refresh Data"}
+        </button>
       </header>
 
-      <section
-        aria-labelledby="heatmap-controls-heading"
-        className="rounded-[2rem] border border-white/12 bg-[#0b1720] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]"
-      >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 id="heatmap-controls-heading" className="text-2xl font-semibold text-white">
-              Data Controls
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-[#d7ebe6]">
-              Refresh the local object snapshot when you want the latest tracked coordinates from
-              <span className="font-semibold text-white"> {API_URL}</span>.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadData()}
-            disabled={isLoading}
-            className="min-h-14 rounded-2xl border-2 border-[#9df3df] bg-[#9df3df] px-6 text-base font-semibold text-[#041014] transition hover:bg-[#b9faea] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9df3df]/35 disabled:cursor-not-allowed disabled:opacity-70"
-            aria-describedby="heatmap-summary heatmap-status"
-          >
-            {isLoading ? "Loading Data" : "Refresh Data"}
-          </button>
-        </div>
-        <p id="heatmap-status" role="status" aria-live="polite" className="mt-4 text-sm font-medium text-[#f5fffd]">
-          {status}
-        </p>
-        {errorMessage ? (
-          <p className="mt-2 rounded-xl border border-[#ffb4b4] bg-[#2a1111] p-4 text-sm leading-7 text-[#fff1f1]">
-            {errorMessage}
-          </p>
-        ) : null}
-      </section>
-
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+      <main className="flex flex-1 flex-col gap-6">
         <section
-          aria-labelledby="heatmap-heading"
-          aria-describedby="heatmap-description"
-          className="rounded-[2rem] border border-white/12 bg-[#0b1720] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]"
+          aria-live="polite"
+          id="dashboard-status"
+          className="rounded-2xl border border-[#2A3441] bg-[#151B26] p-4 text-sm text-[#F1F5F9]"
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 id="heatmap-heading" className="text-2xl font-semibold text-white">
-                Item Coordinate Heatmap
+          {status}
+          {errorMessage ? <p className="mt-2 text-[#FCA5A5]">{errorMessage}</p> : null}
+        </section>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <section
+            className="flex flex-col overflow-hidden rounded-2xl border border-[#2A3441] bg-[#151B26] lg:col-span-8"
+            aria-labelledby="scanner-title"
+          >
+            <div className="z-10 flex items-center justify-between border-b border-[#2A3441] bg-[#151B26] p-6">
+              <h2 id="scanner-title" className="flex items-center gap-3 text-2xl font-semibold text-[#F1F5F9]">
+                <ScanSearch className="size-6 text-[#0DE2C8]" aria-hidden="true" />
+                Spatial Scanner Context
               </h2>
-              <p id="heatmap-description" className="mt-2 max-w-2xl text-sm leading-7 text-[#d7ebe6]">
-                The grid represents the camera frame from top left to bottom right. Each marker shows the last known
-                position of one item using normalized x and y coordinates.
-              </p>
+              <span className="hidden rounded-lg border border-[#2A3441] bg-[#0A0E17] px-3 py-1 text-sm text-[#94A3B8] md:inline-flex">
+                Living Room • Camera 1
+              </span>
             </div>
-            <div className="rounded-2xl border border-white/12 bg-[#111f29] px-4 py-3 text-sm text-[#f5fffd]">
-              {itemsWithCoordinates.length} plotted
+
+            <div className="relative min-h-[320px] flex-1 overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(13,226,200,0.18),transparent_30%),radial-gradient(circle_at_78%_64%,rgba(52,240,217,0.14),transparent_28%),linear-gradient(180deg,#0A0E17_0%,#101723_100%)] p-6">
+              <div
+                className="absolute inset-0 bg-[linear-gradient(to_right,rgba(42,52,65,0.5)_1px,transparent_1px),linear-gradient(to_bottom,rgba(42,52,65,0.5)_1px,transparent_1px)] bg-[size:16.66%_25%]"
+                aria-hidden="true"
+              />
+
+              <div className="relative z-10 flex h-full flex-col gap-5">
+                <div className="flex-1 rounded-2xl border border-[#2A3441] bg-[#0A0E17]/90 p-3 backdrop-blur-sm">
+                  {frameAvailable ? (
+                    <img
+                      src={liveFrameUrl}
+                      alt="Live preview from the local Memento camera worker"
+                      className="h-full min-h-[360px] w-full rounded-xl border border-[#2A3441] object-cover"
+                      onLoad={() => setFrameAvailable(true)}
+                      onError={() => setFrameAvailable(false)}
+                    />
+                  ) : (
+                    <div className="flex h-full min-h-[360px] w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[#2A3441] bg-[#111722] px-6 text-center">
+                      <ImageOff className="size-8 text-[#94A3B8]" aria-hidden="true" />
+                      <p className="max-w-sm text-sm leading-7 text-[#94A3B8]">
+                        Camera preview is not available yet. Start the Python worker to publish the latest live frame.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-[#2A3441] bg-[#151B26]/85 p-4 backdrop-blur-sm">
+                    <p className="text-sm text-[#94A3B8]">Tracked items</p>
+                    <p className="mt-2 text-3xl font-bold text-[#F1F5F9]">{items.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#2A3441] bg-[#151B26]/85 p-4 backdrop-blur-sm">
+                    <p className="text-sm text-[#94A3B8]">Visible now</p>
+                    <p className="mt-2 text-3xl font-bold text-[#F1F5F9]">{visibleItems.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#2A3441] bg-[#151B26]/85 p-4 backdrop-blur-sm">
+                    <p className="text-sm text-[#94A3B8]">API status</p>
+                    <div className="mt-2 flex items-center gap-2 text-[#F1F5F9]">
+                      <Wifi
+                        className={cameraOnline ? "size-5 text-[#22C55E]" : "size-5 text-[#F59E0B]"}
+                        aria-hidden="true"
+                      />
+                      <span className="text-lg font-semibold">{cameraOnline ? "Local only" : "Worker offline"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+          </section>
+
+          <aside
+            className="rounded-2xl border border-[#2A3441] bg-[#151B26] p-6 lg:col-span-4"
+            aria-labelledby="items-title"
+          >
+            <div className="flex items-center gap-3">
+              <Grid3X3 className="size-6 text-[#0DE2C8]" aria-hidden="true" />
+              <h2 id="items-title" className="text-2xl font-semibold text-[#F1F5F9]">
+                Tracked Items
+              </h2>
+            </div>
+            <p className="mt-3 text-sm leading-7 text-[#94A3B8]">
+              A quick list of the latest known locations and time markers for your essential objects.
+            </p>
+
+            <ul className="mt-6 space-y-4">
+              {items.length ? (
+                items.map((item) => (
+                  <li key={item.id} className="rounded-2xl border border-[#2A3441] bg-[#0F141D] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-2xl font-bold text-[#F1F5F9]">{item.label}</h3>
+                      <span
+                        className={
+                          item.isVisible
+                            ? "rounded bg-[#0DE2C8] px-2 py-1 text-sm font-bold text-[#0A0E17]"
+                            : "rounded bg-[#94A3B8] px-2 py-1 text-sm font-bold text-[#0A0E17]"
+                        }
+                      >
+                        {item.isVisible ? "Visible" : "Last Known"}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 text-base text-[#94A3B8]">
+                      <Clock3 className="size-5" aria-hidden="true" />
+                      <span>
+                        Seen <strong className="text-[#F1F5F9]">{formatRelative(item.lastSeenAt)}</strong>
+                      </span>
+                    </div>
+                    <dl className="mt-4 grid gap-2 text-sm text-[#CBD5E1]">
+                      <div className="grid grid-cols-[7rem_1fr] gap-2">
+                        <dt className="font-semibold text-[#94A3B8]">Location</dt>
+                        <dd>{item.zoneName ? item.zoneName.replace(/_/g, " ") : "Unknown"}</dd>
+                      </div>
+                      <div className="grid grid-cols-[7rem_1fr] gap-2">
+                        <dt className="font-semibold text-[#94A3B8]">Recorded</dt>
+                        <dd>{formatTimestamp(item.lastSeenAt)}</dd>
+                      </div>
+                      <div className="grid grid-cols-[7rem_1fr] gap-2">
+                        <dt className="font-semibold text-[#94A3B8]">Heatmap</dt>
+                        <dd>
+                          x {toPercent(item.x)} • y {toPercent(item.y)}
+                        </dd>
+                      </div>
+                      <div className="grid grid-cols-[7rem_1fr] gap-2">
+                        <dt className="font-semibold text-[#94A3B8]">Confidence</dt>
+                        <dd>{formatPercent(item.confidence)}</dd>
+                      </div>
+                    </dl>
+                  </li>
+                ))
+              ) : (
+                <li className="rounded-2xl border border-dashed border-[#2A3441] bg-[#0F141D] p-5 text-sm leading-7 text-[#94A3B8]">
+                  No tracked items are available yet. Start the local API and refresh the dashboard.
+                </li>
+              )}
+            </ul>
+          </aside>
+        </div>
+
+        <section
+          className="flex flex-col rounded-2xl border border-[#2A3441] bg-[#151B26]"
+          aria-labelledby="heatmap-title"
+        >
+          <div className="flex items-center justify-between border-b border-[#2A3441] p-6">
+            <h2 id="heatmap-title" className="flex items-center gap-3 text-2xl font-semibold text-[#F1F5F9]">
+              <Grid3X3 className="size-6 text-[#0DE2C8]" aria-hidden="true" />
+              Frequently Lost Items Heatmap
+            </h2>
+            <p className="hidden text-lg text-[#94A3B8] md:block">Grid represents the physical room layout.</p>
           </div>
 
-          <div className="mt-6">
-            <div className="sr-only">
-              The heatmap is a square plotting surface. Items closer to the top left have lower x and y values. Items
-              closer to the bottom right have higher x and y values.
-            </div>
-
-            <div className="relative aspect-square w-full overflow-hidden rounded-[1.5rem] border-2 border-[#dffaf3] bg-[#041014]">
+          <div className="p-6">
+            <div
+              className="relative h-[400px] w-full overflow-hidden rounded-xl border-2 border-[#2A3441] bg-[#0A0E17] md:h-[500px]"
+              aria-hidden="true"
+            >
               <div
-                className="absolute inset-0 bg-[linear-gradient(to_right,#28505b_1px,transparent_1px),linear-gradient(to_bottom,#28505b_1px,transparent_1px)] bg-[size:10%_10%]"
-                aria-hidden="true"
+                className="absolute inset-0 opacity-40"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, #2A3441 2px, transparent 2px), linear-gradient(to bottom, #2A3441 2px, transparent 2px)",
+                  backgroundSize: "12.5% 20%",
+                }}
               />
-              <div
-                className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(157,243,223,0.16),transparent_62%)]"
-                aria-hidden="true"
-              />
-
-              <div className="absolute left-3 top-3 rounded-full bg-[#dffaf3] px-3 py-1 text-xs font-semibold text-[#041014]">
-                Y: 0.0
-              </div>
-              <div className="absolute bottom-3 left-3 rounded-full bg-[#dffaf3] px-3 py-1 text-xs font-semibold text-[#041014]">
-                Y: 1.0
-              </div>
-              <div className="absolute bottom-3 right-3 rounded-full bg-[#dffaf3] px-3 py-1 text-xs font-semibold text-[#041014]">
-                X: 1.0
-              </div>
 
               {itemsWithCoordinates.length ? (
                 itemsWithCoordinates.map((item) => (
                   <div
                     key={item.id}
-                    className="absolute"
+                    className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                     style={{
                       left: `${(item.x ?? 0) * 100}%`,
                       top: `${(item.y ?? 0) * 100}%`,
-                      transform: "translate(-50%, -50%)",
                     }}
                   >
-                    <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={
+                        item.isVisible
+                          ? "h-6 w-6 rounded-full border-4 border-[#0A0E17] bg-[#0DE2C8] shadow-[0_0_20px_rgba(13,226,200,0.8)]"
+                          : "h-6 w-6 rounded-full border-4 border-[#94A3B8] bg-transparent"
+                      }
+                    />
+                    <div className="absolute left-8 top-1/2 flex -translate-y-1/2 flex-col items-start gap-2">
                       <div
-                        className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#041014] bg-[#9df3df] shadow-[0_0_0_4px_rgba(157,243,223,0.18)]"
-                        aria-hidden="true"
+                        className={
+                          item.isVisible
+                            ? "rounded-lg border border-[#2A3441] bg-[#151B26]/90 px-3 py-1 text-2xl font-bold text-[#F1F5F9] backdrop-blur-sm md:text-3xl"
+                            : "rounded-lg border border-[#2A3441] bg-[#151B26]/90 px-3 py-1 text-2xl font-bold text-[#94A3B8] backdrop-blur-sm md:text-3xl"
+                        }
                       >
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#041014]" />
-                      </div>
-                      <div className="rounded-xl border border-[#dffaf3] bg-[#f5fffd] px-3 py-1.5 text-xs font-semibold text-[#041014] shadow-sm">
                         {item.label}
                       </div>
-                      <span className="sr-only">
-                        {item.label} last recorded at x {item.x?.toFixed(2)} and y {item.y?.toFixed(2)}
-                        {item.zoneName ? ` in ${item.zoneName.replace(/_/g, " ")}` : ""}.
-                      </span>
+                      {!item.isVisible ? (
+                        <div className="rounded bg-[#0A0E17]/80 px-2 py-0.5 text-base text-[#94A3B8]">
+                          Last seen here
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center p-6">
-                  <div className="max-w-md rounded-[1.5rem] border border-dashed border-[#dffaf3] bg-[#0f2029] p-6 text-center">
-                    <h3 className="text-lg font-semibold text-white">No plottable item coordinates yet</h3>
-                    <p className="mt-3 text-sm leading-7 text-[#d7ebe6]">
-                      When the local API returns items with x and y coordinates, they will appear on this heatmap.
+                  <div className="max-w-md rounded-2xl border border-dashed border-[#2A3441] bg-[#111722] p-6 text-center">
+                    <h3 className="text-lg font-semibold text-[#F1F5F9]">No coordinates loaded</h3>
+                    <p className="mt-3 text-sm leading-7 text-[#94A3B8]">
+                      When the local API returns item locations, the heatmap will plot them here.
                     </p>
                   </div>
                 </div>
               )}
             </div>
+
+            <div className="sr-only">
+              <h3>Locations list</h3>
+              <ul>
+                {itemsWithCoordinates.map((item) => (
+                  <li key={`${item.id}-sr`}>
+                    {item.label} is at x {item.x?.toFixed(2)} and y {item.y?.toFixed(2)}
+                    {item.zoneName ? ` in ${item.zoneName.replace(/_/g, " ")}` : ""}.
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </section>
-
-        <aside
-          aria-labelledby="item-list-heading"
-          className="rounded-[2rem] border border-white/12 bg-[#0b1720] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)]"
-        >
-          <h2 id="item-list-heading" className="text-2xl font-semibold text-white">
-            Latest Item Data
-          </h2>
-          <p className="mt-2 text-sm leading-7 text-[#d7ebe6]">
-            This list gives a screen-reader-friendly summary of each item, including last known coordinates and
-            confidence when available.
-          </p>
-
-          <ul className="mt-6 space-y-4">
-            {items.length ? (
-              items.map((item) => (
-                <li
-                  key={item.id}
-                  className="rounded-[1.5rem] border border-white/12 bg-[#111f29] p-4 text-[#f5fffd]"
-                >
-                  <h3 className="text-lg font-semibold text-white">{item.label}</h3>
-                  <dl className="mt-3 grid gap-2 text-sm">
-                    <div className="grid grid-cols-[8rem_1fr] gap-3">
-                      <dt className="font-semibold text-[#c5ddd7]">Zone</dt>
-                      <dd>{item.zoneName ? item.zoneName.replace(/_/g, " ") : "Unknown"}</dd>
-                    </div>
-                    <div className="grid grid-cols-[8rem_1fr] gap-3">
-                      <dt className="font-semibold text-[#c5ddd7]">Coordinates</dt>
-                      <dd>
-                        {item.x !== null && item.y !== null
-                          ? `x ${item.x.toFixed(2)}, y ${item.y.toFixed(2)}`
-                          : "No coordinates available"}
-                      </dd>
-                    </div>
-                    <div className="grid grid-cols-[8rem_1fr] gap-3">
-                      <dt className="font-semibold text-[#c5ddd7]">Confidence</dt>
-                      <dd>{formatPercent(item.confidence)}</dd>
-                    </div>
-                    <div className="grid grid-cols-[8rem_1fr] gap-3">
-                      <dt className="font-semibold text-[#c5ddd7]">Visibility</dt>
-                      <dd>{item.isVisible ? "Visible now" : "Last known position"}</dd>
-                    </div>
-                    <div className="grid grid-cols-[8rem_1fr] gap-3">
-                      <dt className="font-semibold text-[#c5ddd7]">Last seen</dt>
-                      <dd>{formatTimestamp(item.lastSeenAt)}</dd>
-                    </div>
-                  </dl>
-                </li>
-              ))
-            ) : (
-              <li className="rounded-[1.5rem] border border-dashed border-[#dffaf3] bg-[#111f29] p-4 text-sm leading-7 text-[#d7ebe6]">
-                No item records are available yet. Start the local API and use the Refresh Data button to try again.
-              </li>
-            )}
-          </ul>
-        </aside>
-      </div>
-    </section>
+      </main>
+    </div>
   );
 }
