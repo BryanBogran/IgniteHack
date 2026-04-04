@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type ApiObject = {
+  location?: string | null;
   label?: string;
   object_label?: string;
   zone_name?: string | null;
@@ -18,6 +19,7 @@ type ApiObject = {
 
 type ApiResponse = {
   objects?: ApiObject[];
+  [key: string]: unknown;
 };
 
 type HeatmapItem = {
@@ -38,16 +40,30 @@ function clampCoordinate(value: number | null) {
     return null;
   }
 
+  if (value > 1) {
+    return Math.min(1, Math.max(0, value / 100));
+  }
+
   return Math.min(1, Math.max(0, value));
 }
 
 function normaliseItems(payload: ApiResponse): HeatmapItem[] {
-  return (payload.objects ?? []).map((item, index) => ({
+  const rawItems = Array.isArray(payload.objects)
+    ? payload.objects
+    : Object.entries(payload)
+        .filter(([key, value]) => key !== "count" && key !== "database_path" && value && typeof value === "object")
+        .map(([key, value]) => ({
+          ...(value as ApiObject),
+          label: key,
+          object_label: key,
+        }));
+
+  return rawItems.map((item, index) => ({
     id: `${item.label ?? item.object_label ?? "item"}-${index}`,
     label: item.label ?? item.object_label ?? "Unknown item",
-    zoneName: item.zone_name ?? null,
-    x: clampCoordinate(item.center_x ?? item.x ?? null),
-    y: clampCoordinate(item.center_y ?? item.y ?? null),
+    zoneName: item.zone_name ?? item.location ?? null,
+    x: clampCoordinate(item.x ?? item.center_x ?? null),
+    y: clampCoordinate(item.y ?? item.center_y ?? null),
     confidence: typeof item.confidence === "number" ? item.confidence : null,
     lastSeenAt: item.last_seen_at ?? item.seen_at ?? null,
     isVisible: Boolean(item.is_visible),
@@ -101,7 +117,18 @@ export default function HomePage() {
         throw new Error(`Request failed with status ${response.status}.`);
       }
 
-      const payload = (await response.json()) as ApiResponse;
+      const rawBody = await response.text();
+      if (!rawBody.trim()) {
+        throw new Error("The local API returned an empty response.");
+      }
+
+      let payload: ApiResponse;
+      try {
+        payload = JSON.parse(rawBody) as ApiResponse;
+      } catch {
+        throw new Error("The local API returned invalid JSON.");
+      }
+
       const nextItems = normaliseItems(payload);
       setItems(nextItems);
       setStatus(`Loaded ${nextItems.length} tracked item${nextItems.length === 1 ? "" : "s"} from the local API.`);

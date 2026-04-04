@@ -59,14 +59,14 @@ struct ButtonConfig: Identifiable {
 
 struct ContentView: View {
     @StateObject private var locationManager = ObjectLocationManager()
-    @AppStorage("mementoAPIBaseURL") private var apiBaseURL = "http://192.168.1.1:5050"
+    @AppStorage("mementoAPIBaseURL") private var apiBaseURL = "http://0.0.0.0:5050"
     @State private var locationMessage = ""
     @State private var isFetching = false
     private let synthesizer = AVSpeechSynthesizer()
 
     private let buttonConfigs: [ButtonConfig] = [
         ButtonConfig(label: "Where are my Keys?", key: "keys", symbol: "key.fill"),
-        ButtonConfig(label: "Where is my Wallet?", key: "wallet", symbol: "wallet.pass.fill"),
+        ButtonConfig(label: "Where is my Phone?", key: "phone", symbol: "wallet.pass.fill"),
         ButtonConfig(label: "Where are my Glasses?", key: "glasses", symbol: "eyeglasses")
     ]
 
@@ -80,7 +80,7 @@ struct ContentView: View {
                 Text("Python API Base URL")
                     .font(.headline)
 
-                TextField("http://192.168.1.23:5050", text: $apiBaseURL)
+                TextField("http://0.0.0.0:5050", text: $apiBaseURL)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
                     .autocorrectionDisabled()
@@ -141,12 +141,6 @@ struct ContentView: View {
         }
         .padding()
         .background(Color(.systemGray6))
-        .task {
-            await locationManager.fetchLocations(from: endpoint)
-        }
-        .refreshable {
-            await locationManager.fetchLocations(from: endpoint)
-        }
     }
 
     private func fetchAndHandle(for itemKey: String) async {
